@@ -97,7 +97,7 @@
                         Dean / Faculty snapshot is finalized and ready for admission handoff.
                     </div>
                     <div th:if="${preRegReady != true}" class="alert alert-warning">
-                        Save the header, add at least one subject line, then finalize before registrar admission can be approved.
+                        Save the header, add at least one subject line, then finalize so Admission can read the registrar handoff.
                     </div>
 
                     <form th:action="@{/faculty/pre-reg/save}" method="post" class="mb-4">

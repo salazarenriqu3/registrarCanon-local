@@ -101,7 +101,16 @@ public class ApplicantPreRegSnapshotService {
             }
         }
         Object yearLevel = applicant.get("year_level");
-        return yearLevel instanceof Number && ((Number) yearLevel).intValue() >= 2;
+        if (yearLevel instanceof Number) {
+            return ((Number) yearLevel).intValue() >= 2;
+        }
+        if (hasText(yearLevel)) {
+            try {
+                return Integer.parseInt(yearLevel.toString().trim()) >= 2;
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return false;
     }
 
     public Map<String, Object> buildWorkspace(Map<String, Object> applicant) {
@@ -177,6 +186,10 @@ public class ApplicantPreRegSnapshotService {
         if (!hasText(refNo)) {
             return "Applicant reference number is required.";
         }
+        String applicantBlock = validateApplicantEligibleForRegistrarSnapshot(refNo);
+        if (applicantBlock != null) {
+            return applicantBlock;
+        }
         if (!hasText(programCode)) {
             return "Program code is required before building an irregular pre-registration snapshot.";
         }
@@ -222,6 +235,10 @@ public class ApplicantPreRegSnapshotService {
         ensureSchema();
         if (!hasText(refNo)) {
             return "Applicant reference number is required.";
+        }
+        String applicantBlock = validateApplicantEligibleForRegistrarSnapshot(refNo);
+        if (applicantBlock != null) {
+            return applicantBlock;
         }
         if ((courseId == null || courseId <= 0) && (sectionId == null || sectionId <= 0)) {
             return "Choose a curriculum subject first.";
@@ -302,6 +319,13 @@ public class ApplicantPreRegSnapshotService {
 
     public String removeSubjectLine(String refNo, Long lineId) {
         ensureSchema();
+        if (!hasText(refNo)) {
+            return "Applicant reference number is required.";
+        }
+        String applicantBlock = validateApplicantEligibleForRegistrarSnapshot(refNo);
+        if (applicantBlock != null) {
+            return applicantBlock;
+        }
         if (lineId == null || lineId <= 0) {
             return "Subject line not found.";
         }
@@ -321,6 +345,13 @@ public class ApplicantPreRegSnapshotService {
 
     public String finalizeSnapshot(String refNo, String actor) {
         ensureSchema();
+        if (!hasText(refNo)) {
+            return "Applicant reference number is required.";
+        }
+        String applicantBlock = validateApplicantEligibleForRegistrarSnapshot(refNo);
+        if (applicantBlock != null) {
+            return applicantBlock;
+        }
         Long snapshotId = findSnapshotId(refNo);
         if (snapshotId == null) {
             return "Save the irregular pre-registration header first.";
@@ -344,6 +375,13 @@ public class ApplicantPreRegSnapshotService {
 
     public String reopenSnapshot(String refNo, String actor) {
         ensureSchema();
+        if (!hasText(refNo)) {
+            return "Applicant reference number is required.";
+        }
+        String applicantBlock = validateApplicantEligibleForRegistrarSnapshot(refNo);
+        if (applicantBlock != null) {
+            return applicantBlock;
+        }
         Long snapshotId = findSnapshotId(refNo);
         if (snapshotId == null) {
             return "Snapshot not found.";
@@ -366,6 +404,10 @@ public class ApplicantPreRegSnapshotService {
 
     public String validateRegistrarSnapshotReady(String refNo, String targetProgramCode) {
         ensureSchema();
+        String applicantBlock = validateApplicantEligibleForRegistrarSnapshot(refNo);
+        if (applicantBlock != null) {
+            return applicantBlock;
+        }
         Map<String, Object> header = findSnapshotHeader(refNo);
         if (header == null) {
             return "Irregular applicant admission is blocked until Registrar saves a pre-registration snapshot.";
@@ -420,6 +462,31 @@ public class ApplicantPreRegSnapshotService {
             return db.queryForObject(
                 "SELECT id FROM applicants WHERE reference_number = ? LIMIT 1",
                 Long.class, refNo.trim()
+            );
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String validateApplicantEligibleForRegistrarSnapshot(String refNo) {
+        Map<String, Object> applicant = findApplicantByReference(refNo);
+        if (applicant == null) {
+            return "Applicant not found.";
+        }
+        if (!isIrregularApplicant(applicant)) {
+            return "Registrar pre-registration snapshots are limited to irregular/transferee applicants. Regular applicants continue through Admission and Cashier.";
+        }
+        return null;
+    }
+
+    private Map<String, Object> findApplicantByReference(String refNo) {
+        if (!hasText(refNo)) {
+            return null;
+        }
+        try {
+            return db.queryForMap(
+                "SELECT * FROM applicants WHERE reference_number = ? LIMIT 1",
+                refNo.trim()
             );
         } catch (Exception e) {
             return null;

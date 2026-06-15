@@ -139,8 +139,12 @@ public class FacultyIrregularAdvisingController {
                                        HttpSession session,
                                        RedirectAttributes redirectAttributes) {
         if (!isAdviserUser(session)) return "redirect:/login";
-        redirectAttributes.addFlashAttribute("successMessage",
-            preRegSnapshotService.reopenSnapshot(refNo, currentUsername(session)));
+        String message = preRegSnapshotService.reopenSnapshot(refNo, currentUsername(session));
+        if (message.startsWith("Irregular pre-registration reopened")) {
+            redirectAttributes.addFlashAttribute("successMessage", message);
+        } else {
+            redirectAttributes.addFlashAttribute("message", message);
+        }
         return "redirect:/faculty/irregular-advising?refNo=" + refNo;
     }
 
