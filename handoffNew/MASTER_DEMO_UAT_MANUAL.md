@@ -482,9 +482,9 @@ VALUES (@ref, 'Life', 'Cycle', 'lcycl@test.eac.edu.ph', 'BSCPE',
   'ADMISSION_PENDING', 'ADMISSION_PENDING', 'SL2024202512', NOW(), NOW());
 ```
 
-1. Enrollment → Walk-in Payment: http://localhost:8082/admin/walkin-payment?keyword=LCYCL-REF-Y4 → post **₱1,000**
-2. Registrar → Admission: http://localhost:8083/registrar/admin/admission-acceptance?refNo=LCYCL-REF-Y4 → BSCPE Y1 → **Generate Student ID**
-3. Note student number → use as `@sn` below (e.g. `26-2-xxxxx`)
+1. External Admission/Cashier -> complete regular applicant admission, payment, enrollment, and student-number issuance.
+2. Registrar is not part of the regular Y1 lifecycle in the current canon. Use Registrar Admission Acceptance only to validate an irregular Dean / Faculty pre-registration handoff.
+3. Note the student number issued by Admission/Cashier -> use as `@sn` below (e.g. `26-2-xxxxx`).
 
 ### Step 2 — Per year loop (repeat for Y1, Y2, Y3, Y4)
 

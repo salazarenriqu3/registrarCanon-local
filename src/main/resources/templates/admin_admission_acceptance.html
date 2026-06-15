@@ -37,10 +37,6 @@
                 <i class="ti ti-alert-circle" aria-hidden="true"></i>
                 <span><strong>Admission Failed:</strong> <span th:text="${message}"></span></span>
             </div>
-            <div th:if="${admitSuccess != null}" class="alert alert-success" style="margin-bottom: 1rem;">
-                <i class="ti ti-check" aria-hidden="true"></i>
-                <span><strong>Admitted!</strong> Student ID <code th:text="${admitSuccess}"></code> generated. Redirecting to Student Profile...</span>
-            </div>
             <div th:if="${successMessage != null}" class="alert alert-success" style="margin-bottom: 1rem;">
                 <i class="ti ti-check" aria-hidden="true"></i>
                 <span th:text="${successMessage}"></span>
@@ -361,21 +357,13 @@
                         <!-- Payment status (read-only context only) -->
                         <div th:if="${applicant.has_paid == true}" class="alert alert-success" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem;">
                             <i class="ti ti-check" aria-hidden="true"></i>
-                            <div><strong>Cashier Verified:</strong> ₱<span th:text="${#numbers.formatDecimal(applicant.amount_paid != null ? applicant.amount_paid : 0, 1, 'COMMA', 2, 'POINT')}"></span> on record.</div>
+                            <div><strong>Cashier record found:</strong> ₱<span th:text="${#numbers.formatDecimal(applicant.amount_paid != null ? applicant.amount_paid : 0, 1, 'COMMA', 2, 'POINT')}"></span> on record. Payment and student-number issuance remain outside Registrar.</div>
                         </div>
                         <div th:if="${applicant.has_paid == false}" class="alert alert-warning" style="margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem;">
                             <i class="ti ti-alert-triangle mt-1" aria-hidden="true"></i>
                             <div>
                                 <strong>Cashier payment is outside Registrar.</strong>
                                 Registrar can validate the irregular pre-registration handoff before payment. Cashier handles payment and student-number issuance after Admission continues the applicant.
-                                <span th:if="${false}">
-                                    The applicant has only paid ₱<span th:text="${#numbers.formatDecimal(applicant.amount_paid, 1, 'COMMA', 2, 'POINT')}"></span>. 
-                                    The remaining balance of <strong>₱<span th:text="${#numbers.formatDecimal(1000 - applicant.amount_paid, 1, 'COMMA', 2, 'POINT')}"></span></strong> 
-                                    from the ₱1,000 minimum downpayment must be settled at the Cashier before admission can be finalized.
-                                </span>
-                                <span th:if="${false}">
-                                    The applicant must complete their minimum downpayment of ₱1,000 at the Cashier before admission can be finalized.
-                                </span>
                             </div>
                         </div>
 

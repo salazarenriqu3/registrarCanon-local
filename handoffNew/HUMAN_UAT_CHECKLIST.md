@@ -211,13 +211,13 @@ AECO 11,1.75,Prior College,TOR 2024
 
 ---
 
-## A9 — Admission Y1
+## A9 - Legacy Admission Y1
 
 | | |
 |---|---|
-| **URL** | http://localhost:8083/registrar/admin/admission-acceptance |
-| **Do** | Walk-in pay ≥ ₱1,000 on applicant ref → Accept **BSCPE Y1** → **Generate Student ID** |
-| **Pass** | Student number created; admission payment on ledger |
+| **URL** | External Admission/Cashier flow; registrar URL is no longer canonical for regular Y1 admission |
+| **Do** | Regular applicants are admitted, pre-registered, sectioned, paid, enrolled, and assigned student numbers outside Registrar |
+| **Pass** | Registrar is not required for regular Y1 admission; use Registrar only for irregular Dean / Faculty pre-registration handoff validation |
 
 Quick applicant SQL: see `THREE_TRACK_LIFECYCLE_DEMO_MANUAL.md` Part 1A.
 

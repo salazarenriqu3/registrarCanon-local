@@ -105,18 +105,13 @@ VALUES (@ref, 'Demo', 'Student', 'demo@test.eac.edu.ph', 'BSCPE',
   'ADMISSION_PENDING', 'ADMISSION_PENDING', 'SL2024202511', NOW(), NOW());
 ```
 
-### 1B. Admission payment + student ID
+### 1B. Admission payment + student number
 
-1. **Enrollment → Walk-in Payment**  
-   http://localhost:8082/admin/walkin-payment?keyword=`DREG-REF-001`  
-   Post **≥ ₱1,000** (admission minimum).
+Current canon:
 
-2. **Registrar → Admission Acceptance**  
-   http://localhost:8083/registrar/admin/admission-acceptance?refNo=`DREG-REF-001`  
-   - Track 1 & 3: Program **BSCPE**, **Year 1** → **Generate Student ID**  
-   - Track 2: Program **BSCPE**, **Year 2** → Generate (creates **Transferee / Irregular**)
-
-3. Note the **student number** (e.g. `26-2-00005`). Use `@sn` in SQL below.
+1. Track 1 & 3 regular applicants continue through external Admission/Cashier. Registrar does not generate their pre-registration, section assignment, enrollment, or student number.
+2. Track 2 irregular/transferee applicants go through Dean / Faculty advising in Registrar first. Registrar finalizes the irregular pre-registration handoff only.
+3. Admission/Cashier then continues payment, enrollment, and student-number issuance. Note that student number and use it as `@sn` below.
 
 ### 1C. Enrollment cashier loop
 
@@ -250,14 +245,14 @@ ON DUPLICATE KEY UPDATE remarks='Passed', status='SUBMITTED';
 | Item | Value |
 |------|--------|
 | Applicant ref | `TTRNS-REF-001` |
-| Admit | BSCPE **Year 2** (Registrar sets Transferee + Irregular) |
+| Admit | BSCPE **Year 2** after Registrar irregular handoff validation; Admission/Cashier issues the student number |
 | Prefix | `TTRNS%` |
 
 ### Steps
 
 #### 3.1 Admit + confirm transferee flags
 
-After Generate Student ID, verify:
+After Admission/Cashier issues the student number, verify:
 
 ```sql
 SET @sn = '<student_number>';

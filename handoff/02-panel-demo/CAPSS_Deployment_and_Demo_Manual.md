@@ -359,22 +359,11 @@ This section walks through the **complete academic journey** of one student from
 
 ---
 
-#### Step 3 â€” Approve & Generate Student ID (Registrar)
-**URL:** http://localhost:8080/registrar â†’ login as `admin / 1234`
+#### Step 3 - Legacy Registrar Student-ID Demo
 
-1. Go to **Admission Acceptance**
-2. Find `DEMO-SANTOS-001`
-3. Set: Program = `BSIT` | Year Level = `1` | Semester = `1`
-4. Click **"Approve & Generate Student ID"**
+> Legacy note: this old panel demo shows Registrar approving and generating a student ID. That is no longer the current canon. Regular admission and student-number issuance now belong to Admission/Cashier. Registrar should only validate irregular Dean / Faculty pre-registration handoffs.
 
-**Expected:**     
-- Student number generated, e.g., **`2026-1001`**
-- Status = `ADMITTED`
-- Ledger shows: Tuition Fee credit of â‚±1,000
-
-> Note your student number â€” you will use it for all subsequent steps.
-
----
+For current demos, complete regular admission outside Registrar. For irregular/transferee applicants, use Registrar Dean / Faculty advising to finalize the pre-registration handoff, then return to Admission/Cashier for payment, enrollment, and student-number issuance.
 
 ### PHASE 3 â€” Year 1, Semester 1 Enrollment
 
