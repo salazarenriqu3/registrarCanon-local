@@ -241,7 +241,9 @@
                             <input type="hidden" name="refNo" th:value="${applicant.reference_number}">
                             <button type="submit" class="btn btn-outline-secondary">Reopen Snapshot</button>
                         </form>
-                        <a th:href="@{/admin/admission-acceptance(refNo=${applicant.reference_number})}" class="btn btn-outline-primary">Open Admission Review</a>
+                        <span class="text-muted small align-self-center">
+                            After finalization, Admission/Cashier continues the applicant from the registrar handoff.
+                        </span>
                     </div>
                 </div>
 
