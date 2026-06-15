@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body>
+<div class="app">
+    <div th:replace="~{fragments/layout :: topbar}"></div>
+
+    <div class="body-wrapper">
+        <nav th:replace="~{fragments/layout :: sidebar(activeLink='users')}"></nav>
+
+        <main class="main" role="main" id="main-content">
+            <div class="breadcrumb" aria-label="Breadcrumb">
+                <i class="ti ti-home" aria-hidden="true"></i>
+                <i class="ti ti-chevron-right" aria-hidden="true"></i>
+                <span>Admin</span>
+                <i class="ti ti-chevron-right" aria-hidden="true"></i>
+                <span>Users & Access</span>
+            </div>
+
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">User Management</h1>
+                    <p class="page-subtitle">Manage system users, roles, and permissions.</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="document.getElementById('addUserModal').showModal()">
+                        <i class="ti ti-user-plus" aria-hidden="true"></i> Create New User
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title" style="margin: 0; color: var(--primary-color);"><i class="ti ti-users-cog" aria-hidden="true"></i> System Users</h5>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="table-eac" style="margin: 0;">
+                        <thead style="background: var(--bg-tertiary);">
+                            <tr>
+                                <th>ID / Username</th>
+                                <th>Real Name</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th style="text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="u : ${users}">
+                                <td style="font-weight: 700; color: var(--primary-color);" th:text="${u.username}"></td>
+                                <td th:text="${u.real_name}"></td>
+                                <td>
+                                    <span class="status-badge" th:classappend="${u.role == 'Admin' ? 'inactive' : (u.role == 'Faculty' ? 'waitlist' : 'enrolled')}" th:text="${u.role}"></span>
+                                </td>
+                                <td>
+                                    <span class="status-badge" th:classappend="${u.is_active == 1 ? 'enrolled' : 'inactive'}" th:text="${u.is_active == 1 ? 'Active' : 'Inactive'}"></span>
+                                </td>
+                                <td style="text-align: right;">
+                                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                        <button class="btn btn-ghost" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" th:onclick="'document.getElementById(\'editUserModal-' + ${u.user_id} + '\').showModal()'"><i class="ti ti-edit"></i> Edit</button>
+                                        
+                                        <form th:action="@{/admin/reset-password}" method="post" style="margin: 0;" onsubmit="return confirm('Reset password to 1234?');">
+                                            <input type="hidden" name="userId" th:value="${u.user_id}">
+                                            <button type="submit" class="btn btn-primary" style="background: #D97706; border-color: #D97706; padding: 0.25rem 0.5rem; font-size: 0.85rem;" title="Reset Password">
+                                                <i class="ti ti-key"></i> Reset
+                                            </button>
+                                        </form>
+
+                                        <form th:action="@{/admin/delete-user}" method="post" style="margin: 0;" onsubmit="return confirm('Permanently delete this user?');">
+                                            <input type="hidden" name="userId" th:value="${u.user_id}">
+                                            <button type="submit" class="btn btn-primary" style="background: #DC2626; border-color: #DC2626; padding: 0.25rem 0.5rem; font-size: 0.85rem;" title="Delete User">
+                                                <i class="ti ti-trash"></i> Delete
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    <dialog th:id="'editUserModal-'+${u.user_id}" style="border: none; border-radius: 8px; padding: 2rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 400px; max-width: 90vw; margin: auto;">
+                                        <form th:action="@{/admin/update-user}" method="post">
+                                            <h3 style="margin-top: 0; margin-bottom: 1rem; color: var(--text-color);"><i class="ti ti-edit"></i> Edit User</h3>
+                                            <input type="hidden" name="userId" th:value="${u.user_id}">
+                                            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Editing: <strong th:text="${u.real_name}"></strong></p>
+                                            
+                                            <div class="form-group" style="margin-bottom: 1.5rem; text-align: left;">
+                                                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-color);">ROLE</label>
+                                                <select name="role" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-primary); color: var(--text-color);">
+                                                    <option value="Admin" th:selected="${u.role == 'Admin'}">Admin</option>
+                                                    <option value="Faculty" th:selected="${u.role == 'Faculty'}">Faculty</option>
+                                                    <option value="Staff" th:selected="${u.role == 'Staff'}">Staff</option>
+                                                </select>
+                                            </div>
+                                            
+                                            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                                                <button type="button" class="btn btn-ghost" th:onclick="'document.getElementById(\'editUserModal-' + ${u.user_id} + '\').close()'">Cancel</button>
+                                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                                            </div>
+                                        </form>
+                                    </dialog>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(users)}"><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No users found.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<dialog id="addUserModal" style="border: none; border-radius: 8px; padding: 2rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 400px; max-width: 90vw; margin: auto;">
+    <form th:action="@{/create-user}" method="post">
+        <h3 style="margin-top: 0; margin-bottom: 1.5rem; color: var(--text-color);"><i class="ti ti-user-plus"></i> Create New User</h3>
+        
+        <div class="form-group" style="margin-bottom: 1rem; text-align: left;">
+            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-color);">FULL NAME</label>
+            <input type="text" name="realName" required placeholder="e.g. Juan Dela Cruz" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-primary); color: var(--text-color);">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 1rem; text-align: left;">
+            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-color);">USERNAME</label>
+            <input type="text" name="username" required placeholder="e.g. jdelacruz" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-primary); color: var(--text-color);">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 1rem; text-align: left;">
+            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-color);">ROLE</label>
+            <select name="role" id="roleSelect" required onchange="document.getElementById('programDiv').style.display = this.value === 'Faculty' ? 'block' : 'none';" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-primary); color: var(--text-color);">
+                <option value="Faculty">Faculty</option>
+                <option value="Admin">Admin</option>
+                <option value="Staff">Staff</option>
+            </select>
+        </div>
+        
+        <div class="form-group" id="programDiv" style="margin-bottom: 1.5rem; text-align: left;">
+            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-color);">PROGRAM (Faculty Only)</label>
+            <select name="program" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-primary); color: var(--text-color);">
+                <option value="">-- None --</option>
+                <option value="BSIT">BSIT</option>
+                <option value="BSCE">BSCE</option>
+                <option value="BSN">BSN</option>
+            </select>
+        </div>
+        
+        <div style="background: var(--bg-tertiary); padding: 1rem; border-radius: 6px; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; border-left: 3px solid var(--primary-color); text-align: left;">
+            Default password will be set to: <strong style="color: var(--text-color);">1234</strong>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button type="button" class="btn btn-ghost" onclick="document.getElementById('addUserModal').close()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create User</button>
+        </div>
+    </form>
+</dialog>
+<script>
+    document.querySelectorAll('dialog').forEach(dialog => {
+        dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) dialog.close();
+        });
+    });
+</script>
+</body>
+</html>

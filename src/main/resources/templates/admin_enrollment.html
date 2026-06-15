@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body>
+<div class="app">
+    <div th:replace="~{fragments/layout :: topbar}"></div>
+
+    <div class="body-wrapper">
+        <nav th:replace="~{fragments/layout :: sidebar(activeLink='enrollment')}"></nav>
+
+        <main class="main" role="main" id="main-content">
+            <div class="breadcrumb" aria-label="Breadcrumb">
+                <i class="ti ti-home" aria-hidden="true"></i>
+                <i class="ti ti-chevron-right" aria-hidden="true"></i>
+                <span>Admissions & Enrollment</span>
+                <i class="ti ti-chevron-right" aria-hidden="true"></i>
+                <span>Enrollment</span>
+            </div>
+
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Enrollment Hub</h1>
+                    <p class="page-subtitle">Process student enrollment, evaluate subjects, and manage loads.</p>
+                </div>
+            </div>
+
+            <div th:if="${errorMsg != null}" class="status-badge inactive" style="margin-bottom: 1.5rem; display: inline-flex; width: auto; font-size: 1rem; padding: 0.75rem 1rem;">
+                <div class="status-dot"></div>
+                <span th:text="${errorMsg}"></span>
+            </div>
+
+            <div class="card" style="margin-bottom: 2rem; overflow: visible;">
+                <div style="display: flex; flex-wrap: wrap; padding: 1.5rem;">
+                    <!-- Left Side: Find Student -->
+                    <div style="flex: 1; min-width: 300px; border-right: 1px solid var(--border-color); padding-right: 2rem; margin-right: 2rem;">
+                        <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; display: block; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                            <i class="ti ti-search" aria-hidden="true"></i> Find Student
+                        </label>
+                        
+                        <div style="position: relative;">
+                            <input type="text" id="nameSearch" class="form-control" placeholder="Search Name (Press Enter)..." onkeyup="fetchSuggestions()" autocomplete="off" style="margin-bottom: 0.5rem;">
+                            <div id="suggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); z-index: 1050; display: none; max-height: 250px; overflow-y: auto; margin-top: 2px;"></div>
+                        </div>
+
+                        <form id="searchForm" th:action="@{/admin/enrollment}" method="get" style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                            <input type="text" id="idSearchBox" name="username" class="form-control" placeholder="Enter Student ID..." th:value="${student?.username}" style="font-weight: 600;" required>
+                            <button class="btn btn-primary" type="submit" style="padding: 0 1rem;"><i class="ti ti-search" aria-hidden="true"></i></button>
+                        </form>
+                    </div>
+
+                    <!-- Right Side: Student Summary -->
+                    <div style="flex: 2; min-width: 300px;" th:if="${student != null}">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                            <div>
+                                <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color); margin-bottom: 0.25rem;" th:text="${student.real_name}"></h3>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <span style="font-family: monospace; background: var(--bg-tertiary); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.85rem;" th:text="${student.username}"></span>
+                                    <div class="status-badge enrolled"><div class="status-dot"></div>ACTIVE</div>
+                                </div>
+                            </div>
+                            <div style="text-align: right; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                                <span style="background: var(--bg-tertiary); padding: 0.25rem 0.75rem; border-radius: 6px; font-weight: 600; font-size: 0.9rem;">
+                                    <i class="ti ti-layers-intersect" aria-hidden="true"></i> Units: <span th:text="${totalUnits}"></span> / <span th:text="${maxUnits}"></span>
+                                </span>
+                                <span th:if="${isGraduating}" style="background: #FEF3C7; color: #92400E; padding: 0.25rem 0.75rem; border-radius: 6px; font-weight: 600; font-size: 0.9rem;">
+                                    <i class="ti ti-school" aria-hidden="true"></i> Graduating (+6 CHED Overload)
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 2rem; border-top: 1px solid var(--border-color); padding-top: 1rem; font-size: 0.95rem;">
+                            <div><span style="color: var(--text-muted);">Program:</span> <span style="font-weight: 600;" th:text="${student.program_code}"></span></div>
+                            <div><span style="color: var(--text-muted);">Year:</span> <span style="font-weight: 600;" th:text="${student.year_level}"></span></div>
+                            <div><span style="color: var(--text-muted);">Section:</span> <span style="font-weight: 600;">N/A</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Right Side: Empty State -->
+                    <div style="flex: 2; min-width: 300px; display: flex; align-items: center; justify-content: center; color: var(--text-muted);" th:if="${student == null}">
+                        <div style="text-align: center;">
+                            <i class="ti ti-clipboard-list" style="font-size: 3rem; margin-bottom: 1rem; display: block; opacity: 0.5;"></i>
+                            <h5 style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">Enrollment Hub Ready</h5>
+                            <p style="font-size: 0.95rem;">Search for a student using the panel on the left to begin.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enrollment Actions -->
+            <div th:if="${student != null}">
+                
+                <!-- BLOCKED: Pending prior-term overpayment -->
+                <div th:if="${!canEnroll and hasPendingOverpay}" class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #0EA5E9;">
+                    <div style="padding: 3rem 1.5rem; text-align: center;">
+                        <i class="ti ti-cash" style="font-size: 3rem; color: #0EA5E9; margin-bottom: 1rem; display: block; opacity: 0.8;"></i>
+                        <h5 style="font-weight: 700; color: #0EA5E9; font-size: 1.25rem; margin-bottom: 0.5rem;">Enrollment Blocked: Prior-Term Overpayment</h5>
+                        <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">
+                            This student has <strong th:text="'₱' + ${pendingTermCreditFmt}"></strong> from a prior term awaiting disposition.<br>
+                            Resolve in <strong>Student Profile</strong> - refund as cash or apply as credit.
+                        </p>
+                        <a th:href="@{/admin/student-manager(username=${student.username})}" class="btn btn-primary" style="background: #0EA5E9; border-color: #0EA5E9;">
+                            <i class="ti ti-user" aria-hidden="true"></i> Open Student Profile
+                        </a>
+                    </div>
+                </div>
+
+                <!-- BLOCKED: Student has outstanding balance -->
+                <div th:if="${!canEnroll and hasOutstandingBalance and !hasPendingOverpay}" class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #DC2626;">
+                    <div style="padding: 3rem 1.5rem; text-align: center;">
+                        <i class="ti ti-hand-stop" style="font-size: 3rem; color: #DC2626; margin-bottom: 1rem; display: block; opacity: 0.8;"></i>
+                        <h5 style="font-weight: 700; color: #DC2626; font-size: 1.25rem; margin-bottom: 0.5rem;">Enrollment Blocked: Outstanding Balance</h5>
+                        <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">
+                            This student cannot enroll because they have an outstanding balance from the previous term.<br>
+                            They must settle their balance of <strong style="color: #DC2626;" th:text="'₱' + ${outstandingBalanceFmt}"></strong> at the Cashier.
+                        </p>
+                        <a th:href="@{/admin/scholar-cashier(keyword=${student.username})}" class="btn btn-ghost" style="border: 1px solid #DC2626; color: #DC2626;">
+                            <i class="ti ti-cash" aria-hidden="true"></i> Go to Cashier
+                        </a>
+                    </div>
+                </div>
+
+                <!-- BLOCKED: Student has ID but hasn't paid downpayment yet -->
+                <div th:if="${!canEnroll and !hasOutstandingBalance and !hasPendingOverpay}" class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #F59E0B;">
+                    <div style="padding: 3rem 1.5rem; text-align: center;">
+                        <i class="ti ti-lock" style="font-size: 3rem; color: #F59E0B; margin-bottom: 1rem; display: block; opacity: 0.8;"></i>
+                        <h5 style="font-weight: 700; color: var(--text-primary); font-size: 1.25rem; margin-bottom: 0.5rem;">Enrollment Not Yet Unlocked</h5>
+                        <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">
+                            This student has a Student ID but has <strong>not yet paid their downpayment</strong>.<br>
+                            The Registrar must process the downpayment via <strong>Walk-in Payment</strong> before subjects can be enlisted.
+                        </p>
+                        <div class="status-badge waitlist" style="display: inline-flex; font-size: 0.95rem; padding: 0.5rem 1rem;">
+                            <div class="status-dot"></div> Admission Status: <span th:text="${student['admission_status']}" style="margin-left: 0.25rem;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- UNLOCKED: 2-Column Layout -->
+                <div th:if="${canEnroll}" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.5rem; align-items: start;">
+                    
+                    <!-- Section Offerings -->
+                    <div class="card" style="border-left: 4px solid var(--success-color);">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                                <div class="card-title" style="color: var(--success-color); margin: 0;"><i class="ti ti-books" aria-hidden="true"></i> Section Offerings</div>
+                                <span th:if="${isTransferee}" class="status-badge enrolled"><div class="status-dot"></div> Transferee / Irregular</span>
+                            </div>
+                            <form th:if="${classes != null and !classes.empty}" th:action="@{/admin/block-enroll}" method="post" style="margin: 0;">
+                                <input type="hidden" name="studentId" th:value="${student.username}">
+                                <button type="submit" class="btn btn-primary" style="background: var(--success-color); padding: 0.25rem 0.75rem; font-size: 0.85rem;" title="Auto-enroll all available subjects">
+                                    <i class="ti ti-bolt" aria-hidden="true"></i> Block Enroll
+                                </button>
+                            </form>
+                        </div>
+                        <div style="max-height: 500px; overflow-y: auto;">
+                            <table class="table-eac">
+                                <thead style="position: sticky; top: 0; background: var(--bg-tertiary); z-index: 1;">
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Schedule</th>
+                                        <th style="text-align: right;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${classes == null or classes.empty}"><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">No sections available yet.</td></tr>
+                                    <tr th:each="c : ${classes}">
+                                        <td style="font-weight: 600;" th:text="${c.course_code}"></td>
+                                        <td style="font-size: 0.85rem;" th:text="${c.description}"></td>
+                                        <td style="font-size: 0.85rem; color: var(--text-secondary);" th:text="${c.pretty_schedule}"></td>
+                                        <td style="text-align: right;">
+                                            <div th:if="${c.is_disabled}" class="status-badge inactive" th:text="${c.reason_msg}"></div>
+                                            <div th:if="${!c.is_disabled}">
+                                                <form th:if="${isTransferee}" th:action="@{/admin/process-enrollment}" method="post" style="margin: 0;">
+                                                    <input type="hidden" name="studentId" th:value="${student.username}">
+                                                    <input type="hidden" name="scheduleId" th:value="${c.schedule_id}">
+                                                    <button type="submit" class="btn btn-primary" style="background: var(--success-color); padding: 0.25rem 0.75rem; font-size: 0.85rem;">Add</button>
+                                                </form>
+                                                <div th:if="${!isTransferee}" class="status-badge enrolled"><div class="status-dot"></div>Available</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Enlisted Subjects -->
+                    <div class="card" style="border-left: 4px solid var(--primary-color);">
+                        <div class="card-header">
+                            <div class="card-title" style="color: var(--primary-color); margin: 0;"><i class="ti ti-book-2" aria-hidden="true"></i> Enlisted Subjects</div>
+                        </div>
+                        <div style="max-height: 500px; overflow-y: auto;">
+                            <table class="table-eac">
+                                <thead style="position: sticky; top: 0; background: var(--bg-tertiary); z-index: 1;">
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Units</th>
+                                        <th style="text-align: right;">Withdrawal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${studentLoad.empty}"><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 2rem;">No subjects yet.</td></tr>
+                                    <tr th:each="c : ${studentLoad}">
+                                        <td>
+                                            <div style="font-weight: 600;" th:text="${c.course_code}"></div>
+                                            <div style="font-size: 0.8rem; color: var(--text-muted);" th:text="${c.pretty_schedule}"></div>
+                                        </td>
+                                        <td th:text="${c.units}"></td>
+                                        <td style="text-align: right;">
+                                            <a th:if="${isTransferee}" th:href="@{/admin/student-manager(username=${student.username})}" class="btn btn-ghost" style="color: #DC2626; padding: 0.25rem 0.5rem; font-size: 0.85rem;">
+                                                Request in Profile
+                                            </a>
+                                            <span th:if="${!isTransferee}" style="color: var(--text-muted); font-size: 0.85rem;"><i class="ti ti-lock" style="opacity: 0.5;"></i> Blocked</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+    // Note: The contextPath variable must be initialized before this script if it's placed in a separate file.
+    // We get it from the layout head where it's typically injected, or we default it.
+    const baseUrl = window.location.pathname.substring(0, window.location.pathname.indexOf('/admin/'));
+
+    let debounceTimer;
+    function fetchSuggestions() {
+        const query = document.getElementById("nameSearch").value;
+        const box = document.getElementById("suggestions");
+        if (query.length < 2) { box.style.display = "none"; return; }
+        
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            fetch((baseUrl === '' ? '/' : baseUrl + '/') + `api/search-students?query=${encodeURIComponent(query)}`)
+            .then(r => r.json())
+            .then(data => {
+                box.innerHTML = "";
+                if (data.length > 0) {
+                    box.style.display = "block";
+                    data.forEach(s => {
+                        let div = document.createElement("div");
+                        div.style.padding = "0.75rem 1rem";
+                        div.style.borderBottom = "1px solid var(--border-color)";
+                        div.style.cursor = "pointer";
+                        div.innerHTML = `<span style="font-weight: 600; color: var(--text-primary);">${s.real_name}</span> <br><small style="font-family: monospace; color: var(--primary-color);">${s.username}</small>`;
+                        div.onmouseover = () => div.style.backgroundColor = "var(--bg-tertiary)";
+                        div.onmouseout = () => div.style.backgroundColor = "transparent";
+                        div.onclick = () => {
+                            document.getElementById("nameSearch").value = s.real_name;
+                            document.getElementById("idSearchBox").value = s.username;
+                            box.style.display = "none"; 
+                            document.getElementById("searchForm").submit(); 
+                        };
+                        box.appendChild(div);
+                    });
+                } else { 
+                    box.style.display = "block";
+                    box.innerHTML = `<div style="padding: 1rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">No students found.</div>`;
+                }
+            });
+        }, 300);
+    }
+    
+    // Hide dropdown if clicked outside
+    document.addEventListener('click', function(e) {
+        if (!document.getElementById('nameSearch').contains(e.target)) {
+            const box = document.getElementById('suggestions');
+            if(box) box.style.display = 'none';
+        }
+    });
+</script>
+</body>
+</html>

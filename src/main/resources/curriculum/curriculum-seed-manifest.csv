@@ -1,0 +1,34 @@
+program_code,seed_mode,source_file,notes
+ABCOMM,SHARED,curriculums/School of Arts and Sciences/SAS Arts In Com.docx,Publish shared Arts in Communication source into the ABCOMM offering.
+BAMIFM,DIRECT,curriculums/School of Business Education/Business Ad Major in Financial Management.docx,Primary source file exists in the repo.
+BBAMIMM,DIRECT,curriculums/School of Business Education/BS Business Ad Major in Marketing Management.docx,Primary source file exists in the repo.
+BCA,DIRECT,curriculums/School of Business Education/BS Custom Ad.docx,Primary source file exists in the repo.
+BEE,DIRECT,curriculums/School of Teacher Education/BS Elem Education.docx,Primary source file exists in the repo.
+BEED,SHARED,curriculums/School of Teacher Education/BS Elem Education.docx,Publish the shared elementary education source into the BEED offering.
+BEMIE,DIRECT,curriculums/School of Teacher Education/BS Educ major in English.docx,Primary source file exists in the repo.
+BMIOM,DIRECT,curriculums/School of Business Education/BSBA Major in Operation Management.docx,Primary source file exists in the repo.
+BSA,DIRECT,curriculums/School of Business Education/BS Accountancy.docx,Primary source file exists in the repo.
+BSBA,BLOCKED,,No approved source curriculum file is bundled for this program yet.
+BSBio,DIRECT,curriculums/School of Arts and Sciences/SAS Biology Major In Biology.docx,Primary source file exists in the repo.
+BSCE,BLOCKED,,No approved source curriculum file is bundled for this program yet.
+BSCPE,DIRECT,curriculums/School of Engineering and Technology/SET COE.docx,Primary source file exists in the repo.
+BSCrim,DIRECT,curriculums/School of Criminology/Criminology.docx,Primary source file exists in the repo.
+BSCS,BLOCKED,,No approved source curriculum file is bundled for this program yet.
+BSECE,BLOCKED,,No approved source curriculum file is bundled for this program yet.
+BSED,BLOCKED,,Generic umbrella code does not yet have a single approved source curriculum file.
+BSEMISS,DIRECT,curriculums/School of Teacher Education/BS Secondary Educ major in Social Studies.docx,Primary source file exists in the repo.
+BSIT,DIRECT,curriculums/School of Engineering and Technology/SET BSIT.docx,Primary source file exists in the repo.
+BSMATH,BLOCKED,,No approved source curriculum file is bundled for this program yet.
+BSMedTech,DIRECT,curriculums/School of Medical Technology/Medtech.docx,Primary source file exists in the repo.
+BSMT,SHARED,curriculums/School of Medical Technology/Medtech.docx,Publish shared medtech source into the BSMT offering.
+BSN,DIRECT,curriculums/Marian School of Nursing/bsNursing.docx,Primary source file exists in the repo.
+BSOT,DIRECT,curriculums/School of Physical, Occupational, And Respiratory Therapy_/Occupational Therapy.docx,Primary source file exists in the repo.
+BSPHARM,DIRECT,curriculums/School of Pharmacy/SP Science in Pharmacy.docx,Primary source file exists in the repo.
+BSPSYCH,DIRECT,curriculums/School of Arts and Sciences/SAS PSYCHOLOGY.docx,Primary source file exists in the repo.
+BSPT,DIRECT,curriculums/School of Physical, Occupational, And Respiratory Therapy_/Physical Therapy.docx,Primary source file exists in the repo.
+DM,DIRECT,curriculums/School of Dentistry/Dental Medicine.docx,Primary source file exists in the repo.
+HM,DIRECT,curriculums/School of Hospitality and Tourism Management/Hospitality Management.docx,Primary source file exists in the repo.
+NNAD,DIRECT,curriculums/School of  Nutrition and Diabetics/NA Nutrition and Diabetics.docx,Primary source file exists in the repo.
+R,DIRECT,curriculums/School of Radiologic Technology/Radtech.docx,Primary source file exists in the repo.
+RT,DIRECT,curriculums/School of Physical, Occupational, And Respiratory Therapy_/Respi Therapy.docx,Primary source file exists in the repo.
+SAIC,DIRECT,curriculums/School of Arts and Sciences/SAS Arts In Com.docx,Primary source file exists in the repo.

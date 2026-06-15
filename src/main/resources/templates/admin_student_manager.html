@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body>
+<div class="app">
+    <div th:replace="~{fragments/layout :: topbar}"></div>
+
+    <div class="body-wrapper">
+        <nav th:replace="~{fragments/layout :: sidebar(activeLink='students')}"></nav>
+
+        <main class="main" role="main" id="main-content">
+            <div class="breadcrumb" aria-label="Breadcrumb">
+                <i class="ti ti-home" aria-hidden="true"></i>
+                <i class="ti ti-chevron-right" aria-hidden="true"></i>
+                <span>Admissions & Enrollment</span>
+                <i class="ti ti-chevron-right" aria-hidden="true"></i>
+                <span>Student Profile</span>
+            </div>
+
+            <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <h1 class="page-title">Student Profile</h1>
+                    <p class="page-subtitle">One registrar workspace for identity, academic placement, current load, finance, and records.</p>
+                </div>
+                <div th:if="${student != null}" style="display: flex; gap: 0.5rem;">
+                    <a th:href="${enrollmentCashierUrl}" target="_blank" rel="noopener" class="btn btn-primary" style="background: var(--red); border-color: var(--red);">
+                        <i class="ti ti-external-link" aria-hidden="true"></i> Open Enrollment System (External)
+                    </a>
+                    <a th:href="@{/admin/document-trail(query=${student.username})}" class="btn btn-ghost" style="border: 1px solid #0EA5E9; color: #0EA5E9;">
+                        <i class="ti ti-route" aria-hidden="true"></i> Document Trail
+                    </a>
+                    <a th:href="@{/admin/reg-form-history(studentNumber=${student.username})}" class="btn btn-ghost" style="border: 1px solid #2563EB; color: #2563EB;">
+                        <i class="ti ti-history" aria-hidden="true"></i> Reg Form History
+                    </a>
+                    <a th:href="@{/admin/print-cor(username=${student.username})}" class="btn btn-ghost" style="border: 1px solid var(--success-color); color: var(--success-color);">
+                        <i class="ti ti-printer" aria-hidden="true"></i> Print COR
+                    </a>
+                    <a th:href="@{/admin/print-cog(username=${student.username})}" class="btn btn-ghost" style="border: 1px solid var(--primary-color); color: var(--primary-color);">
+                        <i class="ti ti-printer" aria-hidden="true"></i> Print COG
+                    </a>
+                </div>
+            </div>
+
+            <div th:if="${message != null}" class="status-badge inactive" style="margin-bottom: 1.5rem; display: inline-flex; width: auto; font-size: 1rem; padding: 0.75rem 1rem;">
+                <div class="status-dot"></div>
+                <span th:text="${message}"></span>
+            </div>
+            
+            <div th:if="${successMessage != null}" class="status-badge enrolled" style="margin-bottom: 1.5rem; display: inline-flex; width: auto; font-size: 1rem; padding: 0.75rem 1rem;">
+                <div class="status-dot"></div>
+                <span th:text="${successMessage}"></span>
+            </div>
+            <div th:if="${errorMessage != null}" class="status-badge inactive" style="margin-bottom: 1.5rem; display: inline-flex; width: auto; font-size: 1rem; padding: 0.75rem 1rem;">
+                <div class="status-dot"></div>
+                <span th:text="${errorMessage}"></span>
+            </div>
+
+            <div class="card" style="margin-bottom: 2rem; overflow: visible;">
+                <div style="display: flex; flex-wrap: wrap; padding: 1.5rem;">
+                    <!-- Left Side: Find Student -->
+                    <div style="flex: 1; min-width: 300px; border-right: 1px solid var(--border-color); padding-right: 2rem; margin-right: 2rem;">
+                        <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; display: block; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                            <i class="ti ti-search" aria-hidden="true"></i> Find Student Profile
+                        </label>
+                        
+                        <div style="position: relative;">
+                            <input type="text" id="nameSearch" class="form-control" placeholder="Search student profile..." onkeyup="fetchSuggestions()" autocomplete="off" style="margin-bottom: 0.5rem;">
+                            <div id="suggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); z-index: 1050; display: none; max-height: 250px; overflow-y: auto; margin-top: 2px;"></div>
+                        </div>
+
+                        <form id="searchForm" th:action="@{/admin/student-manager}" method="get" style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                            <input type="text" id="idSearchBox" name="username" class="form-control" placeholder="Enter Student ID..." th:value="${student?.username}" style="font-weight: 600;" required>
+                            <button class="btn btn-primary" type="submit" style="padding: 0 1rem;"><i class="ti ti-search" aria-hidden="true"></i></button>
+                        </form>
+                    </div>
+
+                    <!-- Right Side: Student Summary -->
+                    <div style="flex: 2; min-width: 300px;" th:if="${student != null}">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                            <div>
+                                <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color); margin-bottom: 0.25rem;" th:text="${student.real_name}"></h3>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <span style="font-family: monospace; background: var(--bg-tertiary); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.85rem;" th:text="${student.username}"></span>
+                                    <div class="status-badge" th:classappend="${student.admission_status == 'ENROLLED' ? 'enrolled' : 'waitlist'}">
+                                        <div class="status-dot"></div>
+                                        <span th:text="${student.admission_status != null ? student.admission_status : 'PROFILE'}">PROFILE</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        
+                        <div style="display: flex; flex-wrap: wrap; gap: 2rem; border-top: 1px solid var(--border-color); padding-top: 1rem; padding-bottom: 1rem; font-size: 0.95rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem;">
+                            <div><span style="color: var(--text-muted);">Program:</span> <span style="font-weight: 600;" th:text="${student.program_code}"></span></div>
+                            <div><span style="color: var(--text-muted);">Year/Sem:</span> <span style="font-weight: 600;" th:text="${student.year_level + '-' + student.semester}"></span></div>
+                            <div><span style="color: var(--text-muted);">Type:</span> <span style="font-weight: 600;" th:text="${student.student_type != null ? student.student_type : 'Unspecified'}"></span></div>
+                            <div><span style="color: var(--text-muted);">Regularity:</span> <span style="font-weight: 600;" th:text="${student.enrollment_status_type != null ? student.enrollment_status_type : 'Unspecified'}"></span></div>
+                            <div style="width: 100%; color: var(--primary-color);">
+                                <i class="ti ti-mail" aria-hidden="true" style="margin-right: 0.25rem;"></i> <span style="margin-right: 1.5rem;" th:text="${student['email'] != null ? student['email'] : 'No email listed'}"></span>
+                                <i class="ti ti-phone" aria-hidden="true" style="margin-right: 0.25rem;"></i> <span th:text="${student['contact_number'] != null ? student['contact_number'] : 'No phone listed'}"></span>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
+                            <div style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem;">
+                                <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Current Curriculum</div>
+                                <div th:if="${currentCurriculum != null}" style="font-weight: 700; color: var(--text-primary); margin-top: 0.25rem;">
+                                    <span th:text="${currentCurriculum.program_code}"></span> -
+                                    <span th:text="${currentCurriculum.curriculum_name}"></span>
+                                </div>
+                                <div th:if="${currentCurriculum != null}" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+                                    <span th:if="${currentCurriculum.academic_year != null}" th:text="${currentCurriculum.academic_year}"></span>
+                                    <span th:if="${currentCurriculum.version_number != null}" th:text="${' v' + currentCurriculum.version_number}"></span>
+                                    <span th:if="${currentCurriculum.assignment_type != null}" th:text="${' - ' + currentCurriculum.assignment_type}"></span>
+                                </div>
+                                <div th:if="${currentCurriculum == null}" style="font-weight: 700; color: #B45309; margin-top: 0.25rem;">No explicit curriculum assigned</div>
+                                <div th:if="${currentCurriculum == null}" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">Assign a catalog before using deficiency or irregular checks.</div>
+                            </div>
+                            <div style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem;">
+                                <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Current Load</div>
+                                <div style="font-weight: 700; color: var(--text-primary); margin-top: 0.25rem;"><span th:text="${totalUnits != null ? totalUnits : 0}">0</span> units</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;" th:text="${hasEnrolledSubjects ? 'Active subject load found' : 'No current subjects found'}"></div>
+                            </div>
+                            <div style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem;">
+                                <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Profile State</div>
+                                <div style="font-weight: 700; color: var(--text-primary); margin-top: 0.25rem;" th:text="${student.admission_status != null ? student.admission_status : 'No admission status'}"></div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;" th:text="${student.term_year != null ? 'Term year ' + student.term_year : 'No term year listed'}"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Side: Student Roster -->
+                    <div style="flex: 2; min-width: 300px;" th:if="${student == null}">
+                        <div class="card">
+                            <div class="card-header" style="flex-direction: column; align-items: stretch; gap: 1rem; border-bottom: none; padding-bottom: 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div class="card-title"><i class="ti ti-users" aria-hidden="true"></i> Student Profiles</div>
+                                </div>
+                                <div class="filter-pills" role="group" aria-label="Filter students by program" style="overflow-x: auto; white-space: nowrap;">
+                                    <a class="pill" th:href="@{/admin/student-manager(offeringProgram='All')}" th:classappend="${selectedOfferingProgram == 'All'} ? 'active' : ''" role="button">All</a>
+                                    <a class="pill" th:each="prog : ${offeringPrograms}" th:href="@{/admin/student-manager(offeringProgram=${prog.program_code})}" th:classappend="${selectedOfferingProgram == prog.program_code} ? 'active' : ''" th:text="${prog.program_code}" role="button"></a>
+                                </div>
+                            </div>
+                            
+                            <table class="table-eac" aria-label="Student profiles">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 35%;">Student</th>
+                                        <th style="width: 25%;">Program & Year</th>
+                                        <th style="width: 25%;">Status</th>
+                                        <th style="width: 15%;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${studentRoster == null or studentRoster.empty}">
+                                        <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 3rem 1rem;">
+                                            <i class="ti ti-users-minus" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; opacity: 0.5"></i>
+                                            No students found in this program.
+                                        </td>
+                                    </tr>
+                                    <tr th:each="s : ${studentRoster}">
+                                        <td>
+                                            <div style="font-weight: 600; color: var(--text-primary);" th:text="${s.real_name}">Name</div>
+                                            <div style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;" th:text="${s.username}">ID</div>
+                                        </td>
+                                        <td>
+                                            <div style="font-weight: 500;" th:text="${s.program_code}">Program</div>
+                                            <div style="font-size: 0.8rem; color: var(--text-muted);" th:text="'Year ' + ${s.year_level}">Year 1</div>
+                                        </td>
+                                        <td>
+                                            <div class="status-badge" th:classappend="${s.admission_status == 'ENROLLED' ? 'enrolled' : ''}">
+                                                <div class="status-dot"></div>
+                                                <span th:text="${s.admission_status != null ? s.admission_status : 'PENDING'}">STATUS</span>
+                                            </div>
+                                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;" th:if="${s.enrolled_units != null}">
+                                                Enrolled: <span th:text="${s.enrolled_units}">0</span> units
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <a th:href="@{/admin/student-manager(username=${s.username})}" class="btn btn-outline" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">View Profile</a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" th:if="${student != null}" style="margin-bottom: 1.5rem; border-left: 4px solid #0F766E;">
+                <div class="card-header">
+                    <h5 class="card-title" style="margin: 0; color: #0F766E;">
+                        <i class="ti ti-user-edit" aria-hidden="true"></i> Registrar Editable Profile
+                    </h5>
+                </div>
+                <form th:action="@{/admin/student-manager/profile}" method="post" style="padding: 1.5rem;">
+                    <input type="hidden" name="studentNumber" th:value="${student.username}">
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">First Name</label>
+                            <input name="first_name" class="form-control" th:value="${studentProfile.first_name}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Middle Name</label>
+                            <input name="middle_name" class="form-control" th:value="${studentProfile.middle_name}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Last Name</label>
+                            <input name="last_name" class="form-control" th:value="${studentProfile.last_name}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Display Name</label>
+                            <input name="real_name" class="form-control" th:value="${studentProfile.real_name}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Email</label>
+                            <input type="email" name="email" class="form-control" th:value="${studentProfile.email}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Mobile</label>
+                            <input name="mobile" class="form-control" th:value="${studentProfile.mobile}">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Sex</label>
+                            <input name="sex" class="form-control" th:value="${studentProfile.sex}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Date of Birth</label>
+                            <input name="dob" class="form-control" th:value="${studentProfile.dob}" placeholder="YYYY-MM-DD">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Civil Status</label>
+                            <input name="civil_status" class="form-control" th:value="${studentProfile.civil_status}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Religion</label>
+                            <input name="religion" class="form-control" th:value="${studentProfile.religion}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Nationality</label>
+                            <input name="nationality" class="form-control" th:value="${studentProfile.nationality}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Citizenship</label>
+                            <input name="citizenship" class="form-control" th:value="${studentProfile.citizenship}">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Place of Birth</label>
+                            <input name="place_of_birth" class="form-control" th:value="${studentProfile.place_of_birth}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">City</label>
+                            <input name="city" class="form-control" th:value="${studentProfile.city}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Province</label>
+                            <input name="province" class="form-control" th:value="${studentProfile.province}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">ZIP</label>
+                            <input name="zip" class="form-control" th:value="${studentProfile.zip}">
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Street Address</label>
+                            <input name="street" class="form-control" th:value="${studentProfile.street}">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Emergency Contact</label>
+                            <input name="emergency_contact_name" class="form-control" th:value="${studentProfile.emergency_contact_name}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Emergency Mobile</label>
+                            <input name="emergency_contact_mobile" class="form-control" th:value="${studentProfile.emergency_contact_mobile}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Relationship</label>
+                            <input name="emergency_contact_relationship" class="form-control" th:value="${studentProfile.emergency_contact_relationship}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Guardian Name</label>
+                            <input name="guardian_name" class="form-control" th:value="${studentProfile.guardian_name}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Guardian Contact</label>
+                            <input name="guardian_contact" class="form-control" th:value="${studentProfile.guardian_contact}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Guardian Relationship</label>
+                            <input name="guardian_relationship" class="form-control" th:value="${studentProfile.guardian_relationship}">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Father Name</label>
+                            <input name="father_name" class="form-control" th:value="${studentProfile.father_name}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Father Occupation</label>
+                            <input name="father_occupation" class="form-control" th:value="${studentProfile.father_occupation}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Father Contact</label>
+                            <input name="father_contact" class="form-control" th:value="${studentProfile.father_contact}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Mother Name</label>
+                            <input name="mother_name" class="form-control" th:value="${studentProfile.mother_name}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Mother Occupation</label>
+                            <input name="mother_occupation" class="form-control" th:value="${studentProfile.mother_occupation}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Mother Contact</label>
+                            <input name="mother_contact" class="form-control" th:value="${studentProfile.mother_contact}">
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Father Address</label>
+                            <input name="father_address" class="form-control" th:value="${studentProfile.father_address}">
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Mother Address</label>
+                            <input name="mother_address" class="form-control" th:value="${studentProfile.mother_address}">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Elementary School</label>
+                            <input name="elementary_school" class="form-control" th:value="${studentProfile.elementary_school}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Elementary Year</label>
+                            <input name="elementary_year" class="form-control" th:value="${studentProfile.elementary_year}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Junior High School</label>
+                            <input name="jhs_school" class="form-control" th:value="${studentProfile.jhs_school}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Junior High Year</label>
+                            <input name="jhs_year" class="form-control" th:value="${studentProfile.jhs_year}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Senior High School</label>
+                            <input name="shs_school" class="form-control" th:value="${studentProfile.shs_school}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Senior High Track</label>
+                            <input name="shs_track" class="form-control" th:value="${studentProfile.shs_track}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Senior High Year</label>
+                            <input name="shs_year" class="form-control" th:value="${studentProfile.shs_year}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Last School</label>
+                            <input name="last_school" class="form-control" th:value="${studentProfile.last_school}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Last School Year</label>
+                            <input name="last_school_year" class="form-control" th:value="${studentProfile.last_school_year}">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Course Taken</label>
+                            <input name="course_taken" class="form-control" th:value="${studentProfile.course_taken}">
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Elementary Address</label>
+                            <input name="elementary_address" class="form-control" th:value="${studentProfile.elementary_address}">
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Junior High Address</label>
+                            <input name="jhs_address" class="form-control" th:value="${studentProfile.jhs_address}">
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Senior High Address</label>
+                            <input name="shs_address" class="form-control" th:value="${studentProfile.shs_address}">
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+                        <button type="submit" class="btn btn-primary" style="background: #0F766E; border-color: #0F766E;"
+                                onclick="return confirm('Save these registrar profile changes?');">
+                            <i class="ti ti-device-floppy" aria-hidden="true"></i> Save Profile
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Detailed Content Grid -->
+            <div th:if="${student != null}" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; align-items: start;">
+                
+                <!-- Left Column -->
+                <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    
+                    <!-- Enrolled Subjects -->
+                    <div class="card" th:if="${hasEnrolledSubjects}" style="border-left: 4px solid var(--primary-color);">
+                        <div class="card-header">
+                            <h5 class="card-title" style="color: var(--primary-color); margin: 0;"><i class="ti ti-book-2" aria-hidden="true"></i> Current Enrolled Subjects</h5>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="table-eac">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Units</th>
+                                        <th>Schedule</th>
+                                        <th style="text-align: right;">Withdrawal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${studentLoad.empty}"><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No subjects enrolled.</td></tr>
+                                    <tr th:each="c : ${studentLoad}">
+                                        <td style="font-weight: 600;" th:text="${c.course_code}"></td>
+                                        <td th:text="${c.description}"></td>
+                                        <td th:text="${c.units}"></td>
+                                        <td style="font-size: 0.85rem; color: var(--text-muted);" th:text="${c.pretty_schedule}"></td>
+                                        <td style="text-align: right; min-width: 260px;">
+                                            <form th:action="@{/admin/withdrawals/request}" method="post" style="display: grid; grid-template-columns: 1fr; gap: 0.35rem; margin: 0;" onsubmit="return confirm('Submit this subject withdrawal for Dean review?');">
+                                                <input type="hidden" name="studentNumber" th:value="${student.username}">
+                                                <input type="hidden" name="scheduleId" th:value="${c.schedule_id}">
+                                                <select name="reasonCode" class="form-control" required style="font-size: 0.75rem; padding: 0.2rem 0.4rem;">
+                                                    <option value="" disabled selected>Withdrawal reason</option>
+                                                    <option th:each="reason : ${withdrawalReasons}" th:value="${reason.reason_code}" th:text="${reason.reason_label}"></option>
+                                                </select>
+                                                <div style="display: flex; gap: 0.35rem;">
+                                                    <input type="text" name="remarks" maxlength="500" class="form-control" placeholder="Remarks" style="font-size: 0.75rem; padding: 0.2rem 0.4rem;">
+                                                    <button type="submit" class="btn btn-ghost" style="color: #DC2626; border: 1px solid rgba(220,38,38,0.2); padding: 0.2rem 0.45rem; font-size: 0.75rem; white-space: nowrap;"><i class="ti ti-file-minus"></i> Request</button>
+                                                </div>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                <tfoot th:if="${!studentLoad.empty}" style="background: var(--bg-tertiary); font-weight: 700;">
+                                    <tr>
+                                        <td colspan="2" style="text-align: right;">Total Units:</td>
+                                        <td colspan="3" th:text="${totalUnits}"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Withdrawal Requests -->
+                    <div class="card" th:if="${studentWithdrawalRequests != null and !#lists.isEmpty(studentWithdrawalRequests)}" style="border-left: 4px solid #DC2626;">
+                        <div class="card-header">
+                            <h5 class="card-title" style="color: #DC2626; margin: 0;"><i class="ti ti-file-minus" aria-hidden="true"></i> Withdrawal Requests</h5>
+                            <a th:href="@{/admin/withdrawals}" class="btn btn-outline" style="font-size: 0.8rem;">Registrar Queue</a>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="table-eac" style="margin: 0;">
+                                <thead>
+                                    <tr>
+                                        <th>Course</th>
+                                        <th>Reason</th>
+                                        <th>Status</th>
+                                        <th>Requested</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="wr : ${studentWithdrawalRequests}">
+                                        <td>
+                                            <div style="font-weight: 700;" th:text="${wr.course_code}">COURSE</div>
+                                            <div style="font-size: 0.78rem; color: var(--text-muted);" th:text="${wr.section_code}">SECTION</div>
+                                        </td>
+                                        <td>
+                                            <div th:text="${wr.reason_label}">Reason</div>
+                                            <div th:if="${wr.remarks != null and !#strings.isEmpty(wr.remarks)}" style="font-size: 0.78rem; color: var(--text-muted);" th:text="${wr.remarks}"></div>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge"
+                                                  th:classappend="${wr.status == 'APPROVED'} ? 'enrolled' : (${wr.status == 'REJECTED'} ? 'inactive' : 'pending')">
+                                                <div class="status-dot"></div>
+                                                <span th:text="${wr.status}">STATUS</span>
+                                            </span>
+                                        </td>
+                                        <td style="font-size: 0.8rem; color: var(--text-muted);" th:text="${wr.requested_at}">date</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Not Enrolled State -->
+                    <div th:if="${!hasEnrolledSubjects}" class="card" style="border-left: 4px solid #3B82F6; text-align: center; padding: 3rem 1rem;">
+                        <i class="ti ti-info-circle" style="font-size: 3rem; color: #3B82F6; margin-bottom: 1rem; display: block; opacity: 0.8;"></i>
+                        <h5 style="font-weight: 700; color: var(--text-primary); font-size: 1.25rem; margin-bottom: 0.5rem;">Not Yet Enrolled</h5>
+                        <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">
+                            This student has a Student ID but has not yet been enrolled in any subjects.<br>
+                            Enrollment is processed via the <a th:href="${enrollmentCashierUrl}" target="_blank" style="color: var(--primary-color); font-weight: 600; text-decoration: none;">External Enrollment System</a>.
+                        </p>
+                    </div>
+
+                    <!-- Add Subjects Form -->
+                    <div th:if="${hasEnrolledSubjects}" class="card" style="border-left: 4px solid var(--success-color);">
+                        <div class="card-header" style="border-bottom: none; padding-bottom: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h5 class="card-title" style="color: var(--success-color); margin: 0;"><i class="ti ti-circle-plus" aria-hidden="true"></i> Add Subjects</h5>
+                                <span class="status-badge waitlist" id="subjectCount" style="font-family: monospace;"></span>
+                            </div>
+                            
+                            <form th:action="@{/admin/student-manager}" method="get" style="display: grid; grid-template-columns: 1fr 1fr 1.5fr auto; gap: 0.5rem; align-items: end; margin-bottom: 1rem; background: var(--bg-tertiary); padding: 1rem; border-radius: var(--radius-md);">
+                                <input type="hidden" name="username" th:value="${student.username}">
+                                <div>
+                                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">College</label>
+                                    <select name="offeringSchool" class="form-control" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">
+                                        <option value="__DEFAULT__" th:selected="${selectedOfferingSchool == '__DEFAULT__'}">Student Program</option>
+                                        <option value="__ALL__" th:selected="${selectedOfferingSchool == '__ALL__'}">All Colleges</option>
+                                        <option th:each="school : ${offeringSchools}" th:value="${school}" th:text="${school}" th:selected="${school == selectedOfferingSchool}"></option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Program</label>
+                                    <select name="offeringProgram" class="form-control" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">
+                                        <option value="__ALL__" th:selected="${selectedOfferingProgram == '__ALL__'}">All Programs</option>
+                                        <option th:each="prog : ${offeringPrograms}" th:value="${prog.program_code}" th:text="${prog.program_code + ' - ' + prog.program_name}" th:selected="${prog.program_code == selectedOfferingProgram}"></option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Search</label>
+                                    <input type="text" name="offeringQ" class="form-control" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" placeholder="Search..." th:value="${offeringQ}">
+                                </div>
+                                <div>
+                                    <button type="submit" class="btn btn-primary" style="background: var(--success-color); border-color: var(--success-color); padding: 0.35rem 0.75rem; font-size: 0.85rem;"><i class="ti ti-filter"></i> Load</button>
+                                </div>
+                            </form>
+                            
+                            <input type="text" id="subjectSearch" class="form-control" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.5rem 1rem;" placeholder="🔍 Filter loaded subjects locally..." oninput="filterSubjects()">
+                        </div>
+                        
+                        <div style="max-height: 450px; overflow-y: auto; border-top: 1px solid var(--border-color);">
+                            <table class="table-eac" id="addSubjectsTable" style="margin: 0;">
+                                <thead style="position: sticky; top: 0; background: var(--bg-tertiary); z-index: 1;">
+                                    <tr>
+                                        <th style="width:110px">Code</th>
+                                        <th>Description</th>
+                                        <th style="width:60px">Units</th>
+                                        <th>Section & Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="c : ${groupedCourses}" class="subject-row" th:style="${c['is_disabled']} ? 'opacity: 0.6; background: #fafafa;' : ''">
+                                        <td style="font-weight: 600; font-size: 0.85rem;" th:text="${c.course_code}"></td>
+                                        <td style="font-size: 0.85rem;" th:text="${c.description}"></td>
+                                        <td style="text-align: center; font-size: 0.85rem;" th:text="${c.units}"></td>
+                                        
+                                        <!-- DISABLED -->
+                                        <td th:if="${c['is_disabled']}">
+                                            <span th:each="reason : ${c['constraint_msgs']}" class="status-badge"
+                                                  th:classappend="${reason == 'Currently Enrolled'} ? 'enrolled' : (${reason == 'Completed'} ? 'waitlist' : (${reason == 'Exceeds Unit Limit'} ? 'inactive' : 'inactive'))"
+                                                  th:text="${reason}" style="margin-right: 0.25rem;"></span>
+                                        </td>
+                                        
+                                        <!-- AVAILABLE -->
+                                        <td th:if="${!c['is_disabled']}" style="padding-top: 0.5rem; padding-bottom: 0.5rem;">
+                                            <form th:action="@{/admin/student-manager/enroll}" method="post" style="display: flex; gap: 0.5rem; margin: 0;">
+                                                <input type="hidden" name="studentId" th:value="${student.username}">
+                                                <select name="scheduleId" class="form-control" required style="font-size: 0.8rem; padding: 0.25rem 0.5rem;">
+                                                    <option value="" disabled selected>— select section —</option>
+                                                    <option th:each="sec : ${c['sections']}"
+                                                            th:value="${sec['section_id']}"
+                                                            th:disabled="${sec['is_disabled']}"
+                                                            th:title="${sec['reason_msg']}"
+                                                            th:text="${(sec['is_full'] ? '✗ FULL  ' : (sec['has_conflict'] ? '⚠ CONFLICT  ' : '')) + sec['section_code'] + ' — ' + sec['pretty_schedule'] + ' (' + sec['slots_left'] + ' slots)'}">
+                                                    </option>
+                                                </select>
+                                                <button type="submit" class="btn btn-primary" style="background: var(--success-color); padding: 0.25rem 0.5rem; font-size: 0.85rem;">Add</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    <tr th:if="${#lists.isEmpty(groupedCourses)}">
+                                        <td colspan="4" style="text-align: center; padding: 3rem; color: var(--text-muted);">No curriculum courses found. Adjust the filter above.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- TOR / Transfer Credit Workspace -->
+                    <div class="card" th:if="${student != null}" style="border-left: 4px solid #F59E0B;">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <h5 class="card-title" style="margin: 0; color: #B45309;"><i class="ti ti-list-check" aria-hidden="true"></i> TOR &amp; Transfer Crediting</h5>
+                            <span th:if="${shiftCarryOver != null}" style="font-size: 0.75rem; color: var(--text-muted);">
+                                <span th:text="${shiftCarryOver.carriedOverCount}"></span> carried ·
+                                <span th:text="${shiftCarryOver.deficiencyCount}"></span> required ·
+                                <span th:text="${shiftCarryOver.orphanCount}"></span> orphan
+                            </span>
+                        </div>
+
+                        <div th:if="${shiftCarryOver != null and shiftCarryOver.carriedOverCount > 0}" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">CARRIED OVER (passed + in assigned curriculum)</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+                                <span th:each="c : ${shiftCarryOver.carriedOver}" class="sched-tag" th:text="${c.course_code}"></span>
+                            </div>
+                        </div>
+
+                        <div th:if="${shiftCarryOver != null and shiftCarryOver.orphanCount > 0}" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">ORPHAN PASSED (not in assigned curriculum)</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+                                <span th:each="o : ${shiftCarryOver.orphanCredits}" class="sched-tag" style="border-color: #FCA5A5;" th:text="${o.course_code}"></span>
+                            </div>
+                        </div>
+
+                        <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+                            <form th:action="@{/admin/student-manager/bulk-credit}" method="post">
+                                <input type="hidden" name="studentNumber" th:value="${student.username}">
+                                <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">BULK TOR CSV</label>
+                                <textarea name="bulkCreditCsv" class="form-control" rows="4" placeholder="course_code,numeric_grade,source_school,note&#10;AECO 11,1.75,Prior College,TOR 2024&#10;MATH 101,2.0,," style="font-size: 0.8rem; font-family: monospace; margin-bottom: 0.5rem;"></textarea>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="text" name="defaultSourceSchool" placeholder="Default prior school" class="form-control" style="font-size: 0.8rem; max-width: 220px;">
+                                    <button type="submit" class="btn btn-primary" style="background: #F59E0B; border-color: #F59E0B; white-space: nowrap;">Import bulk credits</button>
+                                </div>
+                            </form>
+                            <div th:if="${bulkCreditLines != null}" style="margin-top: 0.75rem; font-size: 0.78rem; max-height: 120px; overflow-y: auto;">
+                                <div th:each="line : ${bulkCreditLines}" th:style="${line.ok} ? 'color: var(--success-color);' : 'color: #DC2626;'" th:text="${line.courseCode + ': ' + line.detail}"></div>
+                            </div>
+                        </div>
+
+                        <div th:if="${curriculumDeficiencies != null and !#lists.isEmpty(curriculumDeficiencies)}" style="max-height: 320px; overflow-x: auto; overflow-y: auto;">
+                            <table class="table-eac" style="margin: 0; min-width: 640px; table-layout: fixed;">
+                                <thead style="background: var(--bg-tertiary); position: sticky; top: 0;">
+                                    <tr>
+                                        <th style="width: 36px;">Yr</th>
+                                        <th style="width: 36px;">Sem</th>
+                                        <th style="width: 88px;">Code</th>
+                                        <th style="width: 140px;">Title</th>
+                                        <th style="width: 44px;">Units</th>
+                                        <th style="width: 260px;">Credit</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="d : ${curriculumDeficiencies}">
+                                        <td th:text="${d.year_level}" style="white-space: nowrap;"></td>
+                                        <td th:text="${d.semester_number}" style="white-space: nowrap;"></td>
+                                        <td style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:text="${d.course_code}" th:title="${d.course_code}"></td>
+                                        <td style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:text="${d.course_title}" th:title="${d.course_title}"></td>
+                                        <td th:text="${d.credit_units}" style="white-space: nowrap;"></td>
+                                        <td>
+                                            <form th:action="@{/admin/student-manager/credit-grade}" method="post" style="display: flex; flex-wrap: nowrap; gap: 0.35rem; margin: 0; align-items: center;">
+                                                <input type="hidden" name="studentNumber" th:value="${student.username}">
+                                                <input type="hidden" name="courseId" th:value="${d.course_id}">
+                                                <input type="text" name="sourceSchool" placeholder="Prior school" class="form-control" style="font-size: 0.75rem; padding: 0.2rem 0.4rem; width: 100px; min-width: 100px;">
+                                                <input type="number" name="numericGrade" step="0.01" min="1" max="5" placeholder="Grade" class="form-control" style="font-size: 0.75rem; padding: 0.2rem 0.4rem; width: 64px; min-width: 64px;">
+                                                <button type="submit" class="btn btn-primary" style="padding: 0.2rem 0.45rem; font-size: 0.75rem; background: #F59E0B; border-color: #F59E0B; white-space: nowrap;">Credit</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div th:if="${curriculumDeficiencies == null or #lists.isEmpty(curriculumDeficiencies)}" style="padding: 1rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                            No curriculum deficiencies — assigned catalog is fully credited/passed.
+                        </div>
+                        <div style="padding: 0.75rem 1rem; font-size: 0.8rem; color: var(--text-muted); border-top: 1px solid var(--border-color);">
+                            Credit prior-school/TOR rows here or via bulk CSV. Credited courses count as passed for prerequisites and irregular enrollment.
+                        </div>
+                    </div>
+
+                    <!-- Academic History -->
+                    <div class="card" style="border-left: 4px solid var(--text-muted);">
+                        <div class="card-header">
+                            <h5 class="card-title" style="margin: 0; color: var(--text-primary);"><i class="ti ti-history" aria-hidden="true" style="color: var(--text-muted);"></i> Academic History</h5>
+                        </div>
+                        <div style="max-height: 500px; overflow-y: auto; padding: 1.5rem;">
+                            <div th:if="${#maps.isEmpty(academicHistory)}" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                <i class="ti ti-file-certificate" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; display: block;"></i>
+                                No academic records found.
+                            </div>
+                            
+                            <div th:each="term : ${academicHistory}" style="margin-bottom: 2rem;">
+                                <h6 style="color: var(--primary-color); font-weight: 700; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;"><i class="ti ti-calendar" aria-hidden="true"></i> <span th:text="${term.key}"></span></h6>
+                                <table class="table-eac" style="margin-bottom: 0; border: 1px solid var(--border-color);">
+                                    <thead style="background: var(--bg-tertiary);">
+                                        <tr>
+                                            <th>Code</th>
+                                            <th>Description</th>
+                                            <th style="text-align: center;">Pre</th>
+                                            <th style="text-align: center;">Mid</th>
+                                            <th style="text-align: center;">Fin</th>
+                                            <th style="text-align: center;">Avg</th>
+                                            <th style="text-align: center;">Remarks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="g : ${term.value}">
+                                            <td style="font-weight: 600; font-size: 0.85rem;" th:text="${g.course_code}"></td>
+                                            <td style="font-size: 0.85rem; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:title="${g.description}" th:text="${g.description}"></td>
+                                            <td style="text-align: center; font-size: 0.85rem;" th:text="${g.prelim_score}"></td>
+                                            <td style="text-align: center; font-size: 0.85rem;" th:text="${g.midterm_score}"></td>
+                                            <td style="text-align: center; font-size: 0.85rem;" th:text="${g.finals_score}"></td>
+                                            <td style="text-align: center; font-weight: 700; font-size: 0.85rem;" th:text="${g.semestral_score}"></td>
+                                            <td style="text-align: center;">
+                                                <span class="status-badge" th:classappend="${g.remarks == 'Passed'} ? 'enrolled' : (${g.remarks == 'Failed'} ? 'inactive' : 'waitlist')" th:text="${g.remarks}" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;"></span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Column -->
+                <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+                    <!-- Pending overpayment disposition (Registrar phase 1) -->
+                    <div class="card" th:if="${hasPendingOverpay}" style="border-left: 4px solid #0EA5E9;">
+                        <div class="card-header">
+                            <h5 class="card-title" style="margin: 0; color: #0EA5E9;"><i class="ti ti-cash" aria-hidden="true"></i> Prior-Term Overpayment</h5>
+                        </div>
+                        <div style="padding: 1.5rem;">
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                                This student has <strong th:text="'₱' + ${pendingTermCreditFmt}"></strong> from a prior term awaiting disposition.
+                                Choose <strong>refund as cash</strong> or <strong>apply as credit</strong> to this term's assessment.
+                            </p>
+                            <form th:action="@{/admin/student-manager/overpay-disposition}" method="post" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                <input type="hidden" name="studentNumber" th:value="${student.username}">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                    <div>
+                                        <label style="font-size: 0.8rem; font-weight: 600;">Refund as cash (₱)</label>
+                                        <input type="number" name="refundAmount" class="form-control" min="0" step="0.01" placeholder="0.00">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.8rem; font-weight: 600;">Apply as credit (₱)</label>
+                                        <input type="number" name="creditAmount" class="form-control" min="0" step="0.01" placeholder="0.00">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.8rem; font-weight: 600;">Remarks (optional)</label>
+                                    <input type="text" name="remarks" class="form-control" maxlength="200" placeholder="e.g. Student request">
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <button type="submit" name="action" value="REFUND" class="btn btn-ghost" style="border: 1px solid #DC2626; color: #DC2626;">Refund all as cash</button>
+                                    <button type="submit" name="action" value="CREDIT" class="btn btn-primary" style="background: var(--success-color);">Apply all as credit</button>
+                                    <button type="submit" name="action" value="SPLIT" class="btn btn-outline">Apply split amounts</button>
+                                </div>
+                                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">
+                                    For single-path actions, leave the other amount empty — full pending balance is used.
+                                </p>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Reg Form / COR transaction history -->
+                    <div class="card" th:if="${regFormEvents != null and !#lists.isEmpty(regFormEvents)}" style="border-left: 4px solid #2563EB;">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <h5 class="card-title" style="margin: 0; color: #2563EB;"><i class="ti ti-file-description" aria-hidden="true"></i> Reg Form History</h5>
+                            <a th:href="@{/admin/print-cor(username=${student.username})}" target="_blank" class="btn btn-outline" style="font-size: 0.8rem;">Print Current COR</a>
+                        </div>
+                        <div style="max-height: 320px; overflow-y: auto;">
+                            <table class="table-eac" style="margin: 0;">
+                                <thead style="background: var(--bg-tertiary); position: sticky; top: 0;">
+                                    <tr>
+                                        <th>Event</th>
+                                        <th>When</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="event : ${regFormEvents}">
+                                        <td style="font-size: 0.8rem;">
+                                            <div style="font-weight: 700;" th:text="${event.purpose}">Registration form event</div>
+                                            <div style="color: var(--text-muted);" th:text="${event.remarks}">Remarks</div>
+                                            <div style="color: var(--text-muted); font-size: 0.75rem;">
+                                                <span th:text="${event.event_type}">TYPE</span>
+                                                <span th:if="${event.related_request_id != null}" th:text="' #'+${event.related_request_id}"></span>
+                                                <span th:if="${event.triggered_by != null}" th:text="' by '+${event.triggered_by}"></span>
+                                            </div>
+                                        </td>
+                                        <td style="font-size: 0.78rem; color: var(--text-muted); white-space: nowrap;" th:text="${event.created_at}">date</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Financial Ledger Summary -->
+                    <div class="card" th:if="${isEnrolledStatus}" style="border-left: 4px solid #F59E0B;">
+                        <div class="card-header">
+                            <h5 class="card-title" style="margin: 0; color: var(--text-primary);"><i class="ti ti-receipt-2" aria-hidden="true" style="color: #F59E0B;"></i> Financial Ledger</h5>
+                        </div>
+                        <div style="max-height: 400px; overflow-y: auto;">
+                            <table class="table-eac" style="margin: 0;">
+                                <thead style="background: var(--bg-tertiary); position: sticky; top: 0;">
+                                    <tr>
+                                        <th>Description</th>
+                                        <th style="text-align: right;">Debit</th>
+                                        <th style="text-align: right;">Credit</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${ledger.empty}"><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No records.</td></tr>
+                                    <tr th:each="r : ${ledger}">
+                                        <td style="font-size: 0.8rem; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:title="${r.description}" th:text="${r.description}"></td>
+                                        <td style="text-align: right; color: #DC2626; font-size: 0.85rem;" th:text="${r.debit != null ? #numbers.formatDecimal(r.debit, 1, 'COMMA', 2, 'POINT') : '-'}"></td>
+                                        <td style="text-align: right; color: var(--success-color); font-size: 0.85rem;" th:text="${r.credit != null ? #numbers.formatDecimal(r.credit, 1, 'COMMA', 2, 'POINT') : '-'}"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Per-student installment override -->
+                    <div class="card" th:if="${student != null and installmentTermId != null}" style="border-left: 4px solid #0EA5E9;">
+                        <div class="card-header">
+                            <h5 class="card-title" style="margin: 0; color: #0EA5E9;"><i class="ti ti-calendar-dollar" aria-hidden="true"></i> Installment Plan Override</h5>
+                        </div>
+                        <div style="padding: 1.5rem;">
+                            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+                                Active term <strong th:text="${installmentTermCode}"></strong>.
+                                Global/term defaults live on
+                                <a th:href="@{/admin/finance-policy(installmentTermId=${installmentTermId})}">Finance Policy</a>.
+                                Saving here overrides the cashier split for this student only.
+                            </p>
+                            <div th:if="${usingCustomStudentInstallmentPlan}" class="status-badge enrolled" style="margin-bottom: 1rem; display: inline-flex;">
+                                <div class="status-dot"></div>
+                                Custom student plan active
+                            </div>
+                            <div th:if="${!usingCustomStudentInstallmentPlan}" class="status-badge pending" style="margin-bottom: 1rem; display: inline-flex;">
+                                <div class="status-dot"></div>
+                                Using term/default plan (editing will create an override)
+                            </div>
+                            <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <form th:action="@{/admin/student-manager/copy-installments-from-term}" method="post">
+                                    <input type="hidden" name="studentNumber" th:value="${student.username}">
+                                    <input type="hidden" name="installmentTermId" th:value="${installmentTermId}">
+                                    <button type="submit" class="btn btn-outline" style="font-size: 0.8rem;">Reset from term plan</button>
+                                </form>
+                                <form th:if="${usingCustomStudentInstallmentPlan}" th:action="@{/admin/student-manager/clear-installments}" method="post"
+                                      onsubmit="return confirm('Clear this student override and use the term/default plan?');">
+                                    <input type="hidden" name="studentNumber" th:value="${student.username}">
+                                    <input type="hidden" name="installmentTermId" th:value="${installmentTermId}">
+                                    <button type="submit" class="btn btn-ghost" style="font-size: 0.8rem; border: 1px solid var(--border-color);">Clear override</button>
+                                </form>
+                            </div>
+                            <form th:action="@{/admin/student-manager/save-installments}" method="post" id="studentInstallmentForm">
+                                <input type="hidden" name="studentNumber" th:value="${student.username}">
+                                <input type="hidden" name="installmentTermId" th:value="${installmentTermId}">
+                                <table class="table-eac" style="margin-bottom: 1rem;">
+                                    <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Due (+months)</th>
+                                        <th>Label</th>
+                                        <th></th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="studentInstallmentRows">
+                                    <tr th:each="row : ${studentInstallmentPlan}">
+                                        <td><input type="number" min="1" class="form-control" name="instNumber" th:value="${row.installment_number}" style="width: 70px;"></td>
+                                        <td><input type="number" min="0" class="form-control" name="instDueMonths" th:value="${row.due_months_offset}" style="width: 90px;"></td>
+                                        <td><input type="text" class="form-control" name="instLabel" th:value="${row.installment_label}"></td>
+                                        <td><button type="button" class="btn btn-ghost btn-remove-student-row">Remove</button></td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                    <button type="button" class="btn btn-outline" id="addStudentInstallmentRow" style="font-size: 0.85rem;">Add row</button>
+                                    <button type="submit" class="btn btn-primary" style="font-size: 0.85rem;">Save student override</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Curriculum Assignment -->
+                    <div class="card" style="border-left: 4px solid #0EA5E9;">
+                        <div class="card-header">
+                            <h5 class="card-title" style="margin: 0; color: #0EA5E9;"><i class="ti ti-book-upload" aria-hidden="true"></i> Current Curriculum Assignment</h5>
+                        </div>
+                        <div style="padding: 1.5rem;">
+                            <div th:if="${currentCurriculum != null}" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 1rem; font-size: 0.85rem;">
+                                <div style="font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Assigned Catalog</div>
+                                <div style="font-weight: 600;">
+                                    <span th:text="${currentCurriculum.program_code}"></span> -
+                                    <span th:text="${currentCurriculum.curriculum_name}"></span>
+                                    <span style="color: var(--text-muted);" th:if="${currentCurriculum.academic_year != null}" th:text="${' (' + currentCurriculum.academic_year + ')'}"></span>
+                                </div>
+                                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
+                                    <span th:if="${currentCurriculum.assignment_type != null}" th:text="${currentCurriculum.assignment_type}"></span>
+                                    <span th:if="${currentCurriculum.reason != null}" th:text="${' - ' + currentCurriculum.reason}"></span>
+                                </div>
+                            </div>
+                            <div th:if="${currentCurriculum == null}" style="background: #FFFBEB; border: 1px solid #FCD34D; border-radius: var(--radius-md); color: #92400E; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.85rem;">
+                                No current curriculum is assigned. Deficiency checks and irregular guidance need an explicit catalog.
+                            </div>
+                            <form th:action="@{/admin/student-manager/assign-curriculum}" method="post">
+                                <input type="hidden" name="studentNumber" th:value="${student.username}">
+                                <div style="margin-bottom: 0.75rem;">
+                                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Same-program Curriculum</label>
+                                    <select name="curriculumId" class="form-control" style="font-size: 0.85rem; padding: 0.4rem;" required>
+                                        <option value="" disabled selected>Choose curriculum for this profile</option>
+                                        <option th:each="curr : ${profileAssignableCurricula}" th:value="${curr.curriculum_id}" th:text="${curr.program_code + ' - ' + curr.curriculum_name + (curr.academic_year != null ? ' (' + curr.academic_year + ')' : '') + (curr.is_active == 1 ? ' [Default]' : '')}" th:selected="${currentCurriculum != null and curr.curriculum_id == currentCurriculum.curriculum_id}"></option>
+                                    </select>
+                                </div>
+                                <div style="margin-bottom: 1rem;">
+                                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Reason / Note</label>
+                                    <input type="text" name="reason" maxlength="255" class="form-control" style="font-size: 0.85rem; padding: 0.4rem;" placeholder="e.g. Registrar catalog correction">
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="width: 100%; background: #0EA5E9; border-color: #0EA5E9;" onclick="return confirm('Assign this curriculum as the current catalog for this student profile?');" th:disabled="${profileAssignableCurricula == null or #lists.isEmpty(profileAssignableCurricula)}">
+                                    <i class="ti ti-device-floppy" aria-hidden="true"></i> Assign Current Curriculum
+                                </button>
+                                <p th:if="${profileAssignableCurricula == null or #lists.isEmpty(profileAssignableCurricula)}" style="font-size: 0.78rem; color: #DC2626; margin: 0.75rem 0 0;">
+                                    No curriculum is available for this student's current program. Create or activate a curriculum before assigning.
+                                </p>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Program Shift -->
+                    <div class="card" style="border-left: 4px solid #DC2626;">
+                        <div class="card-header">
+                            <h5 class="card-title" style="margin: 0; color: #DC2626;"><i class="ti ti-arrows-right-left" aria-hidden="true"></i> Program Shift</h5>
+                        </div>
+                        <div style="padding: 1.5rem;">
+                            <div th:if="${currentCurriculum != null}" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 1rem; font-size: 0.85rem;">
+                                <div style="font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Current Assigned Curriculum</div>
+                                <div style="font-weight: 600;">
+                                    <span th:text="${currentCurriculum.program_code}"></span> - <span th:text="${currentCurriculum.curriculum_name}"></span>
+                                    <span style="color: var(--text-muted);" th:if="${currentCurriculum.academic_year != null}" th:text="${' (' + currentCurriculum.academic_year + ')'}"></span>
+                                </div>
+                            </div>
+                            <form th:action="@{/admin/student-manager/shift-program}" method="post">
+                                <input type="hidden" name="studentNumber" th:value="${student.username}">
+                                <div style="margin-bottom: 0.75rem;">
+                                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Target Program</label>
+                                    <select name="targetProgramCode" class="form-control" style="font-size: 0.85rem; padding: 0.4rem;" required>
+                                        <option value="" disabled selected>Choose program</option>
+                                        <option th:each="prog : ${offeringPrograms}" th:value="${prog.program_code}" th:text="${prog.program_code + ' - ' + prog.program_name}" th:selected="${prog.program_code == student.program_code}"></option>
+                                    </select>
+                                </div>
+                                <div style="margin-bottom: 0.75rem;">
+                                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Destination Curriculum</label>
+                                    <select name="targetCurriculumId" class="form-control" style="font-size: 0.85rem; padding: 0.4rem;">
+                                        <option value="">Use target program active curriculum</option>
+                                        <option th:each="curr : ${assignableCurricula}" th:value="${curr.curriculum_id}" th:text="${curr.program_code + ' - ' + curr.curriculum_name + (curr.academic_year != null ? ' (' + curr.academic_year + ')' : '') + (curr.is_active == 1 ? ' [Default]' : '')}" th:selected="${currentCurriculum != null and curr.curriculum_id == currentCurriculum.curriculum_id}"></option>
+                                    </select>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+                                    <div>
+                                        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Year Level</label>
+                                        <select name="targetYearLevel" class="form-control" style="font-size: 0.85rem; padding: 0.4rem;">
+                                            <option th:each="yr : ${#numbers.sequence(1,4)}" th:value="${yr}" th:text="${yr}" th:selected="${yr == student.year_level}"></option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Semester</label>
+                                        <select name="targetSemester" class="form-control" style="font-size: 0.85rem; padding: 0.4rem;">
+                                            <option value="1" th:selected="${student.semester == 1}">1</option>
+                                            <option value="2" th:selected="${student.semester == 2}">2</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style="margin-bottom: 1rem;">
+                                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Reason / Note</label>
+                                    <input type="text" name="reason" class="form-control" style="font-size: 0.85rem; padding: 0.4rem;" placeholder="Optional">
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="width: 100%; background: #DC2626; border-color: #DC2626;" onclick="return confirm('Shift this student to the selected program and mark them Irregular? Current-term staged enlistments will be cleared.');">
+                                    <i class="ti ti-device-floppy" aria-hidden="true"></i> Apply Program Shift
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Scholarship Management -->
+                    <div class="card" style="border-left: 4px solid var(--primary-color);">
+                        <div class="card-header">
+                            <h5 class="card-title" style="margin: 0; color: var(--primary-color);"><i class="ti ti-award" aria-hidden="true"></i> Scholarship Control</h5>
+                        </div>
+                        <div style="padding: 1.5rem;">
+                            <form th:action="@{/admin/scholarships/grant}" method="post">
+                                <input type="hidden" name="studentNumber" th:value="${student.username}">
+                                <input type="hidden" name="returnTo" value="student-manager">
+                                <div style="margin-bottom: 0.75rem;">
+                                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Classification</label>
+                                    <select name="classification" id="scholarshipTypeSelect" class="form-control" style="font-size: 0.85rem; padding: 0.4rem;" required>
+                                        <option th:each="type : ${scholarshipTypes}" th:value="${type.classification}" th:text="${type.display_name + ' (' + type.discount_mode + ')'}" th:attr="data-mode=${type.discount_mode},data-pct=${type.default_discount_percentage},data-amount=${type.default_scholarship_amount}"></option>
+                                        <option value="NONE">None</option>
+                                    </select>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+                                    <div>
+                                        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Discount %</label>
+                                        <input type="number" name="discountPct" id="scholarshipDiscountPct" class="form-control" style="font-size: 0.85rem; padding: 0.4rem;" min="0" max="100" step="0.01" value="0" required>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Flat Amount</label>
+                                        <input type="number" name="scholarshipAmount" id="scholarshipAmount" class="form-control" style="font-size: 0.85rem; padding: 0.4rem;" min="0" step="0.01" value="0" required>
+                                    </div>
+                                </div>
+                                <div id="scholarshipModeHelp" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">Choose a scholarship type to load its configured default.</div>
+                                <div style="margin-bottom: 1rem;">
+                                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Toggle Status</label>
+                                    <select name="status" class="form-control" style="font-size: 0.85rem; padding: 0.4rem;" required>
+                                        <option value="ACTIVE">GRANT (ACTIVE)</option>
+                                        <option value="REVOKED">REVOKE</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                                    <i class="ti ti-device-floppy" aria-hidden="true"></i> Update Scholarship
+                                </button>
+                            </form>
+                            <hr style="margin: 1.5rem 0; border-color: var(--border-color);">
+                            <form th:action="@{/admin/scholarships/evaluate}" method="post">
+                                <input type="hidden" name="currentSemester" th:value="${student.semester}">
+                                <input type="hidden" name="currentYear" th:value="${student.year_level}">
+                                <button type="submit" class="btn btn-ghost" style="width: 100%; border: 1px solid #D97706; color: #D97706;">
+                                    <i class="ti ti-refresh" aria-hidden="true"></i> Trigger Auto-Renewal
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<script>
+    const baseUrl = window.location.pathname.substring(0, window.location.pathname.indexOf('/admin/'));
+
+    let debounceTimer;
+    function fetchSuggestions() {
+        const query = document.getElementById("nameSearch").value;
+        const box = document.getElementById("suggestions");
+        if (query.length < 2) { box.style.display = "none"; return; }
+        
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            fetch((baseUrl === '' ? '/' : baseUrl + '/') + `api/search-students?query=${encodeURIComponent(query)}`)
+            .then(r => r.json())
+            .then(data => {
+                box.innerHTML = "";
+                if (data.length > 0) {
+                    box.style.display = "block";
+                    data.forEach(s => {
+                        let div = document.createElement("div");
+                        div.style.padding = "0.75rem 1rem";
+                        div.style.borderBottom = "1px solid var(--border-color)";
+                        div.style.cursor = "pointer";
+                        div.innerHTML = `<span style="font-weight: 600; color: var(--text-primary);">${s.real_name}</span> <br><small style="font-family: monospace; color: var(--primary-color);">${s.username}</small>`;
+                        div.onmouseover = () => div.style.backgroundColor = "var(--bg-tertiary)";
+                        div.onmouseout = () => div.style.backgroundColor = "transparent";
+                        div.onclick = () => {
+                            document.getElementById("nameSearch").value = s.real_name;
+                            document.getElementById("idSearchBox").value = s.username;
+                            box.style.display = "none"; 
+                            document.getElementById("searchForm").submit(); 
+                        };
+                        box.appendChild(div);
+                    });
+                } else { 
+                    box.style.display = "block";
+                    box.innerHTML = `<div style="padding: 1rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">No students found.</div>`;
+                }
+            });
+        }, 300);
+    }
+    
+    document.addEventListener('click', function(e) {
+        if (!document.getElementById('nameSearch').contains(e.target)) {
+            const box = document.getElementById('suggestions');
+            if(box) box.style.display = 'none';
+        }
+    });
+
+    function filterSubjects() {
+        const query = document.getElementById('subjectSearch').value.toLowerCase();
+        const rows = document.querySelectorAll('.subject-row');
+        let visible = 0;
+        rows.forEach(row => {
+            const code = row.cells[0].textContent.toLowerCase();
+            const desc = row.cells[1].textContent.toLowerCase();
+            const match = code.includes(query) || desc.includes(query);
+            row.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        const badge = document.getElementById('subjectCount');
+        if (badge) badge.textContent = query ? visible + ' / ' + rows.length + ' shown' : rows.length + ' subjects';
+    }
+    document.addEventListener('DOMContentLoaded', filterSubjects);
+
+    function syncScholarshipDefaults() {
+        const select = document.getElementById('scholarshipTypeSelect');
+        if (!select) return;
+        const option = select.options[select.selectedIndex];
+        const mode = option?.dataset?.mode || 'NONE';
+        const pct = option?.dataset?.pct || '0';
+        const amount = option?.dataset?.amount || '0';
+        const pctInput = document.getElementById('scholarshipDiscountPct');
+        const amountInput = document.getElementById('scholarshipAmount');
+        const help = document.getElementById('scholarshipModeHelp');
+        if (pctInput) pctInput.value = mode === 'FLAT' ? '0' : pct;
+        if (amountInput) amountInput.value = mode === 'FLAT' ? amount : '0';
+        if (help) {
+            help.textContent = mode === 'FLAT'
+                ? 'Flat amount will be deducted from the assessment.'
+                : (mode === 'FULL' ? 'Full mode stores a 100% discount.' : 'Percent mode deducts the configured percentage.');
+        }
+    }
+    document.getElementById('scholarshipTypeSelect')?.addEventListener('change', syncScholarshipDefaults);
+    document.addEventListener('DOMContentLoaded', syncScholarshipDefaults);
+
+    (function () {
+        const tbody = document.getElementById('studentInstallmentRows');
+        const addBtn = document.getElementById('addStudentInstallmentRow');
+        if (!tbody || !addBtn) return;
+
+        function nextNumber() {
+            const inputs = tbody.querySelectorAll('input[name="instNumber"]');
+            let max = 0;
+            inputs.forEach(i => { const v = parseInt(i.value, 10); if (!isNaN(v)) max = Math.max(max, v); });
+            return max + 1;
+        }
+
+        function ordinal(n) {
+            if (n === 1) return 'st';
+            if (n === 2) return 'nd';
+            if (n === 3) return 'rd';
+            return 'th';
+        }
+
+        addBtn.addEventListener('click', function () {
+            const n = nextNumber();
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td><input type="number" min="1" class="form-control" name="instNumber" value="' + n + '" style="width:70px"></td>' +
+                '<td><input type="number" min="0" class="form-control" name="instDueMonths" value="' + n + '" style="width:90px"></td>' +
+                '<td><input type="text" class="form-control" name="instLabel" value="' + n + ordinal(n) + ' Installment"></td>' +
+                '<td><button type="button" class="btn btn-ghost btn-remove-student-row">Remove</button></td>';
+            tbody.appendChild(tr);
+        });
+
+        tbody.addEventListener('click', function (e) {
+            if (e.target.classList.contains('btn-remove-student-row')) {
+                e.target.closest('tr').remove();
+            }
+        });
+    })();
+</script>
+</body>
+</html>

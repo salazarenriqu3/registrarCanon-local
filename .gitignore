@@ -1,0 +1,22 @@
+target/
+
+# IDE / local workspace metadata
+.classpath
+.project
+.factorypath
+.settings/
+.vscode/
+
+# Runtime / temporary files
+*.log
+*.tmp
+*.swp
+
+# Stray root artifacts from older local command runs
+/0
+/12
+/3.0)
+
+# OS metadata
+Thumbs.db
+.DS_Store

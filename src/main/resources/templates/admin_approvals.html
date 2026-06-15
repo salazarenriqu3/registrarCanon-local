@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body>
+<script th:inline="javascript">const contextPath = /*[[@{/}]]*/ '';</script>
+<div class="app">
+    <div th:replace="~{fragments/layout :: topbar}"></div>
+    
+    <div class="body-wrapper">
+        <nav th:replace="~{fragments/layout :: sidebar(activeLink='approvals')}"></nav>
+        
+        <main class="main" role="main" id="main-content">
+            
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+                <div>
+                    <h1 class="page-title">Registrar & VPAA Approvals</h1>
+                    <p class="page-subtitle">Review and approve grade submissions, extensions, and change requests.</p>
+                </div>
+            </div>
+
+            <!-- VPAA Extension Requests -->
+            <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--danger-color);">
+                <div class="card-header" style="border-bottom: none; padding-bottom: 0;">
+                    <h4 class="card-title" style="color: var(--danger-color);"><i class="ti ti-clock-exclamation" aria-hidden="true"></i> VPAA Extension Requests (Past Deadline)</h4>
+                </div>
+                <div style="padding: 1rem 1.5rem 1.5rem;">
+                    <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                        <table class="table-eac">
+                            <thead>
+                                <tr>
+                                    <th style="padding-left: 1.5rem;">Faculty</th>
+                                    <th>Subject Code</th>
+                                    <th>Reason for Extension</th>
+                                    <th style="padding-right: 1.5rem; text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="ext : ${extensions}">
+                                    <td style="padding-left: 1.5rem; font-weight: 700; color: var(--text-primary);" th:text="${ext.faculty_name}"></td>
+                                    <td><span style="background: var(--bg-tertiary); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 600; font-size: 0.85rem;" th:text="${ext.course_code}"></span></td>
+                                    <td style="color: var(--danger-color); font-weight: 600;" th:text="${ext.reason}"></td>
+                                    <td style="padding-right: 1.5rem; text-align: right;">
+                                        <form th:action="@{/admin/approve-extension}" method="post" onsubmit="return confirm('Grant 24-hour grading extension to this faculty member?');" style="margin: 0;">
+                                            <input type="hidden" name="extId" th:value="${ext.ext_id}">
+                                            <button class="btn btn-outline" style="color: var(--danger-color); border-color: rgba(220, 38, 38, 0.2);"><i class="ti ti-lock-open" aria-hidden="true"></i> Unlock</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(extensions)}">
+                                    <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">No pending VPAA extension requests.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Class Grade Submissions -->
+            <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--primary-color);">
+                <div class="card-header" style="border-bottom: none; padding-bottom: 0;">
+                    <h4 class="card-title" style="color: var(--primary-color);"><i class="ti ti-file-signature" aria-hidden="true"></i> Pending Class Grade Submissions</h4>
+                </div>
+                <div style="padding: 1rem 1.5rem 1.5rem;">
+                    <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                        <table class="table-eac">
+                            <thead>
+                                <tr>
+                                    <th style="padding-left: 1.5rem;">Faculty</th>
+                                    <th>Course</th>
+                                    <th>Schedule</th>
+                                    <th style="padding-right: 1.5rem; text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="c : ${pendingClasses}">
+                                    <td style="padding-left: 1.5rem; font-weight: 700; color: var(--text-primary);" th:text="${c.faculty_name}"></td>
+                                    <td style="font-weight: 600;" th:text="${c.course_code}"></td>
+                                    <td style="color: var(--text-muted); font-size: 0.85rem;" th:text="${c.pretty_schedule}"></td>
+                                    <td style="padding-right: 1.5rem; text-align: right; white-space: nowrap;">
+                                        <a th:href="@{/admin/classes/view/{id}(id=${c.schedule_id})}" class="btn btn-outline" style="margin-right: 0.5rem;"><i class="ti ti-eye"></i> View</a>
+                                        <form th:action="@{/admin/approve-class}" method="post" style="display: inline-block; margin: 0;">
+                                            <input type="hidden" name="scheduleId" th:value="${c.schedule_id}">
+                                            <button class="btn btn-primary"><i class="ti ti-file-check" aria-hidden="true"></i> Post to Transcripts</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(pendingClasses)}">
+                                    <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">No pending class submissions.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grade Change & INC Resolution Requests -->
+            <div class="card" style="border-left: 4px solid var(--warning-color);">
+                <div class="card-header" style="border-bottom: none; padding-bottom: 0;">
+                    <h4 class="card-title" style="color: var(--warning-color);"><i class="ti ti-replace" aria-hidden="true"></i> Grade Change & INC Resolution Requests</h4>
+                </div>
+                <div style="padding: 1rem 1.5rem 1.5rem;">
+                    <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                        <table class="table-eac">
+                            <thead>
+                                <tr>
+                                    <th style="padding-left: 1.5rem;">Faculty</th>
+                                    <th>Student</th>
+                                    <th>Course</th>
+                                    <th style="text-align: center;">Type</th>
+                                    <th style="text-align: center;">Current</th>
+                                    <th style="text-align: center;">Requested</th>
+                                    <th>Reason</th>
+                                    <th style="padding-right: 1.5rem; text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="r : ${requests}">
+                                    <td style="padding-left: 1.5rem; color: var(--text-muted); font-size: 0.85rem;" th:text="${r.faculty}"></td>
+                                    <td style="font-weight: 700; color: var(--primary-color);" th:text="${r.student_name}"></td>
+                                    <td style="font-weight: 600;" th:text="${r.course_code}"></td>
+                                    <td style="text-align: center;"><span style="background: rgba(14, 165, 233, 0.1); color: #0ea5e9; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700; font-size: 0.75rem;" th:text="${r.request_label}"></span></td>
+                                    <td style="text-align: center;"><span style="background: var(--bg-tertiary); color: var(--text-muted); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700; font-size: 0.85rem;" th:text="${r.old_grade}"></span></td>
+                                    <td style="text-align: center;"><span style="background: rgba(34, 197, 94, 0.1); color: var(--success-color); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700; font-size: 0.85rem;" th:text="${r.requested_summary}"></span></td>
+                                    <td style="color: var(--danger-color); font-weight: 600; font-size: 0.85rem;" th:text="${r.reason}"></td>
+                                    <td style="padding-right: 1.5rem; text-align: right;">
+                                        <form th:action="@{/admin/approve-change}" method="post" onsubmit="return confirm('Approve this grade correction request?');" style="margin: 0;">
+                                            <input type="hidden" name="requestId" th:value="${r.request_id}">
+                                            <button class="btn btn-outline" style="color: var(--warning-color); border-color: rgba(245, 158, 11, 0.2);"><i class="ti ti-check" aria-hidden="true"></i> Approve</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(requests)}">
+                                    <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">No pending grade change requests.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+</div>
+</body>
+</html>

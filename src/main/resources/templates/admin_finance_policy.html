@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body>
+<div class="app">
+    <div th:replace="~{fragments/layout :: topbar}"></div>
+    <div class="body-wrapper">
+        <nav th:replace="~{fragments/layout :: sidebar(activeLink='finance-policy')}"></nav>
+
+        <main class="main" role="main" id="main-content">
+            <div class="breadcrumb" aria-label="Breadcrumb">
+                <i class="ti ti-home" aria-hidden="true"></i>
+                <i class="ti ti-chevron-right" aria-hidden="true"></i>
+                <span>Admin</span>
+                <i class="ti ti-chevron-right" aria-hidden="true"></i>
+                <span>Finance Policy</span>
+            </div>
+
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Finance &amp; Accounting Policy</h1>
+                    <p class="page-subtitle">
+                        Single source of truth for payment gates, enrollment rules, and installment schedules.
+                        Fee <em>amounts</em> per program stay on
+                        <a th:href="@{/admin/term-fees}">Program Fees</a>;
+                        scholarship discounts on <a th:href="@{/admin/scholarships}">Scholarships</a>.
+                    </p>
+                </div>
+            </div>
+
+            <div th:if="${successMessage}" class="status-badge enrolled" style="margin-bottom: 1rem; display: inline-flex;">
+                <div class="status-dot"></div>
+                <span th:text="${successMessage}"></span>
+            </div>
+            <div th:if="${errorMessage}" class="status-badge inactive" style="margin-bottom: 1rem; display: inline-flex;">
+                <div class="status-dot"></div>
+                <span th:text="${errorMessage}"></span>
+            </div>
+
+            <!-- 1. Payment gates -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div class="card-header">
+                    <div class="card-title"><i class="ti ti-lock-dollar"></i> 1. Payment gates</div>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                        Used by Registrar admission, Enrollment cashier finalize, and enlistment block checks.
+                    </p>
+                    <form th:action="@{/admin/finance-policy/save-gates}" method="post">
+                        <input type="hidden" name="installmentTermId" th:value="${installmentTermId}">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem;">
+                            <div>
+                                <label class="form-label">Accounting block threshold (₱)</label>
+                                <input type="number" min="0" step="0.01" class="form-control" name="ACCOUNTING_BLOCK_THRESHOLD"
+                                       th:value="${accountingBlockThreshold}">
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">
+                                    Forwarded debt at or above this blocks new enlistment.
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label">Admission / reservation minimum (₱)</label>
+                                <input type="number" min="0" step="0.01" class="form-control" name="ADMISSION_MIN_PAYMENT"
+                                       th:value="${admissionMinPayment}">
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">
+                                    Applicant must pay this before Registrar can assign a student number.
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label">Downpayment — fixed amount (₱)</label>
+                                <input type="number" min="0" step="0.01" class="form-control" name="DOWNPAYMENT_THRESHOLD"
+                                       th:value="${downpaymentAmount}">
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">
+                                    Used when percent below is 0.
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label">Downpayment — percent of assessment</label>
+                                <input type="number" min="0" max="100" step="0.01" class="form-control" name="DOWNPAYMENT_PERCENT"
+                                       th:value="${downpaymentPercent}">
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">
+                                    Set to 0 to use fixed amount. Cashier uses this for finalize gate.
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="margin-top: 1.25rem;">Save payment gates</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 2. Enrollment rules -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div class="card-header">
+                    <div class="card-title"><i class="ti ti-adjustments"></i> 2. Enrollment rules</div>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                        Drop/add penalties, unit caps, session timeout, and RLE hours multiplier.
+                    </p>
+                    <form th:action="@{/admin/finance-policy/save-rules}" method="post">
+                        <input type="hidden" name="installmentTermId" th:value="${installmentTermId}">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                            <div th:each="entry : ${enrollmentRules}">
+                                <label class="form-label" th:text="${entry.key}"></label>
+                                <input type="text" class="form-control" th:name="'rule_' + ${entry.key}" th:value="${entry.value}">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="margin-top: 1.25rem;">Save enrollment rules</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 3. Installment plan -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div class="card-header">
+                    <div class="card-title"><i class="ti ti-calendar-dollar"></i> 3. Installment schedule</div>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                        Cashier splits <em>(total assessment − downpayment)</em> evenly across these rows.
+                        This is separate from the <strong>Installment charge</strong> flat fee on Program Fees
+                        (<code>OTHER_INSTALLMENT</code>).
+                        Per-student overrides (e.g. payment hardship) are edited on
+                        <a th:href="@{/admin/student-manager}">Student Profile</a> -> Installment Plan Override.
+                    </p>
+
+                    <form th:action="@{/admin/finance-policy}" method="get" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: end; margin-bottom: 1.25rem;">
+                        <div>
+                            <label class="form-label">Edit plan for</label>
+                            <select name="installmentTermId" class="form-control" onchange="this.form.submit()">
+                                <option value="">Default (all terms without own plan)</option>
+                                <option th:each="t : ${terms}" th:value="${t.term_id}"
+                                        th:text="${t.term_name + ' (' + t.term_code + ')'}"
+                                        th:selected="${installmentTermId != null and installmentTermId == t.term_id}"></option>
+                            </select>
+                        </div>
+                    </form>
+
+                    <div th:if="${installmentTermId != null and usingDefaultInstallmentPlan}" class="status-badge pending" style="margin-bottom: 1rem; display: inline-flex;">
+                        <div class="status-dot"></div>
+                        This term has no custom plan — showing the global default below.
+                    </div>
+
+                    <div th:if="${installmentTermId != null}" style="margin-bottom: 1.25rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <form th:action="@{/admin/finance-policy/copy-installments}" method="post">
+                            <input type="hidden" name="copyMode" value="default">
+                            <input type="hidden" name="targetTermId" th:value="${installmentTermId}">
+                            <button type="submit" class="btn btn-outline">Copy default → this term</button>
+                        </form>
+                        <form th:if="${previousTermId != null}" th:action="@{/admin/finance-policy/copy-installments}" method="post">
+                            <input type="hidden" name="copyMode" value="previous">
+                            <input type="hidden" name="targetTermId" th:value="${installmentTermId}">
+                            <input type="hidden" name="sourceTermId" th:value="${previousTermId}">
+                            <button type="submit" class="btn btn-outline">Copy previous term → this term</button>
+                        </form>
+                    </div>
+
+                    <form th:action="@{/admin/finance-policy/save-installments}" method="post" id="installmentForm">
+                        <input type="hidden" name="installmentTermId" th:value="${installmentTermId}">
+                        <table class="table-eac" style="margin-bottom: 1rem;">
+                            <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Due (+months)</th>
+                                <th>Label</th>
+                                <th></th>
+                            </tr>
+                            </thead>
+                            <tbody id="installmentRows">
+                            <tr th:each="row, stat : ${installmentPlan}">
+                                <td><input type="number" min="1" class="form-control" name="instNumber" th:value="${row.installment_number}" style="width: 70px;"></td>
+                                <td><input type="number" min="0" class="form-control" name="instDueMonths" th:value="${row.due_months_offset}" style="width: 90px;"></td>
+                                <td><input type="text" class="form-control" name="instLabel" th:value="${row.installment_label}"></td>
+                                <td><button type="button" class="btn btn-ghost btn-remove-row">Remove</button></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-outline" id="addInstallmentRow">Add row</button>
+                            <button type="submit" class="btn btn-primary">Save installment plan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+<script>
+    (function () {
+        const tbody = document.getElementById('installmentRows');
+        const addBtn = document.getElementById('addInstallmentRow');
+        if (!tbody || !addBtn) return;
+
+        function nextNumber() {
+            const inputs = tbody.querySelectorAll('input[name="instNumber"]');
+            let max = 0;
+            inputs.forEach(i => { const v = parseInt(i.value, 10); if (!isNaN(v)) max = Math.max(max, v); });
+            return max + 1;
+        }
+
+        addBtn.addEventListener('click', function () {
+            const n = nextNumber();
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td><input type="number" min="1" class="form-control" name="instNumber" value="' + n + '" style="width:70px"></td>' +
+                '<td><input type="number" min="0" class="form-control" name="instDueMonths" value="' + n + '" style="width:90px"></td>' +
+                '<td><input type="text" class="form-control" name="instLabel" value="' + n + ordinal(n) + ' Installment"></td>' +
+                '<td><button type="button" class="btn btn-ghost btn-remove-row">Remove</button></td>';
+            tbody.appendChild(tr);
+        });
+
+        tbody.addEventListener('click', function (e) {
+            if (e.target.classList.contains('btn-remove-row')) {
+                e.target.closest('tr').remove();
+            }
+        });
+
+        function ordinal(n) {
+            if (n === 1) return 'st';
+            if (n === 2) return 'nd';
+            if (n === 3) return 'rd';
+            return 'th';
+        }
+    })();
+</script>
+</body>
+</html>

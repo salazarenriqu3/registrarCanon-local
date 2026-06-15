@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Curriculum Management — EAC Registrar</title>
+    <th:block th:replace="~{fragments/layout :: head}"></th:block>
+    <style>
+        .program-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .program-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+        }
+        .program-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+            border-color: var(--primary-color);
+        }
+        .program-card .school-badge {
+            font-size: .75rem;
+            font-weight: 700;
+            padding: .25rem .75rem;
+            border-radius: 999px;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            display: inline-block;
+            margin-bottom: .75rem;
+        }
+        .program-card .prog-code {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.25rem;
+        }
+        .program-card .prog-name {
+            font-size: .9rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .program-card .course-count {
+            font-size: .85rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .curriculum-toolbar {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+        .mode-tabs {
+            display: flex;
+            gap: .4rem;
+            flex-wrap: wrap;
+        }
+        .mode-tabs a {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: .45rem .7rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-decoration: none;
+            background: var(--bg-secondary);
+            font-size: .85rem;
+        }
+        .mode-tabs a.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        .curriculum-actions {
+            display: flex;
+            gap: .5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .curriculum-actions form {
+            margin: 0;
+            display: inline-flex;
+            gap: .4rem;
+            align-items: center;
+        }
+        .curriculum-meta {
+            display: flex;
+            gap: .4rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .curriculum-chip {
+            font-size: .75rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: .2rem .55rem;
+        }
+        .completion-workspace {
+            border: 1px solid rgba(217, 119, 6, .25);
+            border-radius: var(--radius-lg);
+            background: linear-gradient(135deg, rgba(255, 251, 235, .92), rgba(255, 255, 255, .98));
+            box-shadow: var(--shadow-sm);
+            margin: 1.25rem 0 1.75rem;
+            overflow: hidden;
+        }
+        .completion-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            flex-wrap: wrap;
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid rgba(217, 119, 6, .18);
+        }
+        .completion-title {
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-weight: 800;
+            margin: 0 0 .25rem;
+        }
+        .completion-subtitle {
+            color: var(--text-muted);
+            font-size: .88rem;
+            margin: 0;
+        }
+        .completion-count {
+            color: #92400e;
+            background: rgba(217, 119, 6, .12);
+            border: 1px solid rgba(217, 119, 6, .2);
+            border-radius: 999px;
+            font-size: .78rem;
+            font-weight: 800;
+            padding: .3rem .7rem;
+        }
+        .completion-head-actions {
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .completion-table td,
+        .completion-table th {
+            vertical-align: middle;
+        }
+        .completion-status {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            color: #92400e;
+            background: rgba(217, 119, 6, .1);
+            border-radius: 999px;
+            font-size: .76rem;
+            font-weight: 800;
+            padding: .22rem .6rem;
+        }
+        .completion-actions {
+            display: flex;
+            gap: .4rem;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        .editor-panel {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .editor-grid {
+            display: grid;
+            grid-template-columns: minmax(130px, 1fr) minmax(130px, 1fr) minmax(220px, 2fr) 90px 90px 90px minmax(160px, 1fr) auto;
+            gap: .5rem;
+            align-items: end;
+        }
+        .course-picker-wrap {
+            position: relative;
+        }
+        .course-picker-note {
+            grid-column: 1 / -1;
+            color: var(--text-muted);
+            font-size: .82rem;
+            margin-top: -.15rem;
+        }
+        .course-results {
+            display: none;
+            grid-column: 1 / -1;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-primary);
+            box-shadow: var(--shadow-md);
+            max-height: 260px;
+            overflow-y: auto;
+        }
+        .course-results.active {
+            display: block;
+        }
+        .course-result {
+            display: grid;
+            grid-template-columns: 140px minmax(220px, 1fr) 90px minmax(180px, 1fr);
+            gap: .75rem;
+            align-items: center;
+            width: 100%;
+            border: 0;
+            border-bottom: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: .65rem .8rem;
+            text-align: left;
+        }
+        .course-result:hover {
+            background: var(--bg-tertiary);
+        }
+        .course-result:last-child {
+            border-bottom: 0;
+        }
+        .course-result-code {
+            color: var(--primary-color);
+            font-weight: 800;
+        }
+        .course-result-meta {
+            color: var(--text-muted);
+            font-size: .82rem;
+        }
+        .course-result-empty {
+            color: var(--text-muted);
+            padding: .75rem .9rem;
+        }
+        .course-selected-pill {
+            display: none;
+            grid-column: 1 / -1;
+            align-items: center;
+            gap: .5rem;
+            color: #047857;
+            background: rgba(16, 185, 129, .08);
+            border: 1px solid rgba(16, 185, 129, .25);
+            border-radius: var(--radius-md);
+            padding: .5rem .7rem;
+            font-size: .86rem;
+            font-weight: 700;
+        }
+        .course-selected-pill.active {
+            display: inline-flex;
+        }
+        @media (max-width: 980px) {
+            .editor-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .course-result {
+                grid-template-columns: 1fr;
+                gap: .25rem;
+            }
+        }
+        .placement-form {
+            display: inline-flex;
+            gap: .35rem;
+            align-items: center;
+            margin: 0;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--primary-color);
+            border-radius: var(--radius-lg);
+            background: var(--bg-tertiary);
+            padding: 3rem 2rem;
+            text-align: center;
+            transition: all .2s ease;
+            cursor: pointer;
+        }
+        .upload-zone.drag-over {
+            border-color: var(--success-color);
+            background: rgba(34, 197, 94, 0.05);
+        }
+        .upload-zone i { font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem; opacity: 0.8; }
+
+        .yr-badge {
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            font-size: .8rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .sem-pill {
+            font-size: .75rem;
+            padding: .2rem .6rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .sem-1 { background: rgba(59, 130, 246, 0.1); color: #2563eb; }
+        .sem-2 { background: rgba(236, 72, 153, 0.1); color: #db2777; }
+        .sem-3 { background: rgba(16, 185, 129, 0.1); color: #059669; }
+
+        .spinner-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.6);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 1rem;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            backdrop-filter: blur(4px);
+        }
+        .spinner-overlay.active { display: flex; }
+
+        #previewTable { display: none; margin-top: 1.5rem; }
+        
+        /* Modal styling */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1050;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+        }
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-dialog {
+            background: white;
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 800px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-lg);
+            animation: modalFadeIn 0.3s ease;
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+    </style>
+    <script th:inline="javascript">
+        const ctx = /*[[@{/}]]*/ '/';
+    </script>
+</head>
+<body>
+<div class="app">
+    <th:block th:replace="~{fragments/layout :: topbar}"></th:block>
+    
+    <div class="body-wrapper">
+        <th:block th:replace="~{fragments/layout :: sidebar('curriculum')}"></th:block>
+        
+        <div class="main">
+            
+            <div th:if="${successMsg}" class="alert alert-success" style="margin-bottom: 1.5rem;">
+                <i class="ti ti-check" aria-hidden="true"></i>
+                <span th:text="${successMsg}"></span>
+            </div>
+            <div th:if="${errorMsg}" class="alert alert-danger" style="margin-bottom: 1.5rem;">
+                <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+                <span th:text="${errorMsg}"></span>
+            </div>
+
+            <!-- Header Actions -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+                <div>
+                    <h1 class="page-title">Curriculum Management</h1>
+                    <p class="page-subtitle" th:text="'Manage academic programs and course requisites. Rows shown: ' + ${#lists.size(programs)}"></p>
+                </div>
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                    <button class="btn btn-outline" onclick="document.getElementById('uploadModal').classList.add('show')">
+                        <i class="ti ti-upload" aria-hidden="true"></i> Upload .docx
+                    </button>
+                    <form th:action="@{/admin/curriculum/seed-all}" method="post" id="seedAllForm">
+                        <button type="submit" class="btn btn-primary" onclick="showSpinner('Publishing manifest-approved curriculums…')">
+                            <i class="ti ti-refresh" aria-hidden="true"></i> Seed All from Manifest
+                        </button>
+                    </form>
+                    <form th:action="@{/admin/curriculum/repair-readiness}" method="post" id="repairReadinessForm">
+                        <button type="submit" class="btn btn-outline" onclick="showSpinner('Repairing curriculum readiness…')">
+                            <i class="ti ti-tool" aria-hidden="true"></i> Repair Readiness
+                        </button>
+                    </form>
+                    <form th:action="@{/admin/curriculum/normalize-active}" method="post" id="normalizeActiveForm">
+                        <button type="submit" class="btn btn-outline"
+                                onclick="return confirm('Archive duplicate active curricula and keep one current active curriculum per program? Existing student curriculum assignments will be preserved.') && showSpinner('Normalizing active curricula...')">
+                            <i class="ti ti-archive" aria-hidden="true"></i> Normalize Active
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="curriculum-toolbar" th:unless="${courses != null}">
+                <div class="mode-tabs">
+                    <a th:href="@{/admin/curriculum(view='active',programCode=${selectedProgramCode})}" th:classappend="${selectedView == null or selectedView == 'active'} ? 'active' : ''"><i class="ti ti-checkup-list"></i> Active</a>
+                    <a th:href="@{/admin/curriculum(view='draft',programCode=${selectedProgramCode})}" th:classappend="${selectedView == 'draft'} ? 'active' : ''"><i class="ti ti-pencil"></i> Drafts</a>
+                    <a th:href="@{/admin/curriculum(view='history',programCode=${selectedProgramCode})}" th:classappend="${selectedView == 'history'} ? 'active' : ''"><i class="ti ti-history"></i> History</a>
+                    <a th:href="@{/admin/curriculum(view='all',programCode=${selectedProgramCode})}" th:classappend="${selectedView == 'all'} ? 'active' : ''"><i class="ti ti-stack"></i> All</a>
+                </div>
+                <form th:action="@{/admin/curriculum}" method="get" class="curriculum-actions">
+                    <input type="hidden" name="view" th:value="${selectedView ?: 'active'}">
+                    <select name="programCode" class="form-control" style="min-width: 260px;">
+                        <option value="">All programs</option>
+                        <option th:each="p : ${programOptions}"
+                                th:value="${p.program_code}"
+                                th:text="${p.program_code + ' - ' + p.program_name}"
+                                th:selected="${selectedProgramCode != null and selectedProgramCode == p.program_code}"></option>
+                    </select>
+                    <button type="submit" class="btn btn-outline"><i class="ti ti-filter"></i> Filter</button>
+                </form>
+                <form th:action="@{/admin/curriculum/placeholder}" method="post" class="curriculum-actions">
+                    <select name="programCode" class="form-control" style="min-width: 260px;" required>
+                        <option value="">Create placeholder for program</option>
+                        <option th:each="p : ${programOptions}"
+                                th:value="${p.program_code}"
+                                th:text="${p.program_code + ' - ' + p.program_name}"></option>
+                    </select>
+                    <input name="academicYear" class="form-control" style="width: 130px;" placeholder="2024-2025">
+                    <button type="submit" class="btn btn-outline" onclick="showSpinner('Creating curriculum placeholder...')"><i class="ti ti-file-plus"></i> Placeholder</button>
+                </form>
+            </div>
+
+            <div th:unless="${courses != null}" th:if="${completionQueue != null and !#lists.isEmpty(completionQueue)}" class="completion-workspace">
+                <div class="completion-head">
+                    <div>
+                        <h3 class="completion-title">
+                            <i class="ti ti-clipboard-list" aria-hidden="true" style="color:#b45309;"></i>
+                            Curriculum Completion Workspace
+                        </h3>
+                        <p class="completion-subtitle">These programs are not readiness-complete because they do not have an active curriculum with real course rows.</p>
+                    </div>
+                    <div class="completion-head-actions">
+                        <span class="completion-count" th:text="${#lists.size(completionQueue)} + ' blocker(s)'">0 blockers</span>
+                        <form th:action="@{/admin/curriculum/retire-empty-blockers}" method="post" style="margin:0;">
+                            <button type="submit" class="btn btn-outline" style="padding:.35rem .7rem;"
+                                    onclick="return confirm('Retire empty curriculum blocker programs from active offerings? This hides them from readiness/admissions lists but keeps historical records.')">
+                                <i class="ti ti-archive" aria-hidden="true"></i> Retire empty blockers
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="table-eac completion-table" style="margin:0;">
+                        <thead>
+                        <tr>
+                            <th style="padding-left:1.2rem;">Program</th>
+                            <th>School</th>
+                            <th>Working Curriculum</th>
+                            <th style="text-align:center;">Rows</th>
+                            <th>Status</th>
+                            <th style="text-align:right; padding-right:1.2rem;">Action</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="q : ${completionQueue}">
+                            <td style="padding-left:1.2rem;">
+                                <div style="font-weight:800; color:var(--primary-color);" th:text="${q.program_code}">CODE</div>
+                                <div style="font-size:.82rem; color:var(--text-muted);" th:text="${q.program_name}">Program</div>
+                            </td>
+                            <td style="font-size:.85rem; color:var(--text-muted);" th:text="${q.school_name}">School</td>
+                            <td>
+                                <span th:if="${q.curriculum_id != null}" style="font-weight:700;" th:text="${'#' + q.curriculum_id + ' - ' + (q.curriculum_name ?: 'Untitled curriculum')}">#</span>
+                                <span th:if="${q.curriculum_id == null}" style="color:var(--text-muted);">No placeholder yet</span>
+                                <div style="font-size:.78rem; color:var(--text-muted);" th:if="${q.curriculum_id != null}">
+                                    <span th:text="${q.approval_status ?: 'Draft'}">Draft</span>
+                                    <span th:if="${q.academic_year != null}" th:text="${' / ' + q.academic_year}"></span>
+                                </div>
+                            </td>
+                            <td style="text-align:center; font-weight:800;" th:text="${q.course_count ?: 0}">0</td>
+                            <td>
+                                <span class="completion-status">
+                                    <i class="ti ti-alert-circle" aria-hidden="true"></i>
+                                    <span th:text="${q.completion_status}">Needs work</span>
+                                </span>
+                            </td>
+                            <td style="padding-right:1.2rem;">
+                                <div class="completion-actions">
+                                    <a th:if="${q.curriculum_id != null}" th:href="@{/admin/curriculum/view/{id}(id=${q.curriculum_id})}" class="btn btn-primary" style="padding:.35rem .7rem;">
+                                        <i class="ti ti-tools" aria-hidden="true"></i> Open builder
+                                    </a>
+                                    <form th:if="${q.curriculum_id == null}" th:action="@{/admin/curriculum/placeholder}" method="post" style="margin:0;">
+                                        <input type="hidden" name="programCode" th:value="${q.program_code}">
+                                        <button type="submit" class="btn btn-outline" style="padding:.35rem .7rem;" onclick="showSpinner('Creating curriculum placeholder...')">
+                                            <i class="ti ti-file-plus" aria-hidden="true"></i> Create placeholder
+                                        </button>
+                                    </form>
+                                    <a th:href="@{/admin/courses}" class="btn btn-outline" style="padding:.35rem .7rem;">
+                                        <i class="ti ti-books" aria-hidden="true"></i> Catalog
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Course Detail Panel -->
+            <div th:if="${courses != null}" class="card">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div class="card-title"><i class="ti ti-list-details" aria-hidden="true"></i> Curriculum Course List</div>
+                        <div class="curriculum-meta" th:if="${curriculum != null and !curriculum.isEmpty()}">
+                            <span class="curriculum-chip" th:text="${curriculum.program_code}"></span>
+                            <span class="curriculum-chip" th:text="${curriculum.curriculum_name}"></span>
+                            <span class="curriculum-chip" th:text="${'A.Y. ' + curriculum.academic_year}"></span>
+                            <span class="curriculum-chip" th:text="${'Version ' + curriculum.version_number}"></span>
+                            <span class="curriculum-chip" th:text="${curriculum.approval_status ?: 'Draft'}"></span>
+                        </div>
+                    </div>
+                    <div class="curriculum-actions">
+                        <a th:href="@{/admin/curriculum/export/{id}(id=${curriculumId})}" class="btn btn-outline" style="padding: 0.4rem 0.8rem;">
+                            <i class="ti ti-download" aria-hidden="true"></i> Export
+                        </a>
+                        <form th:action="@{/admin/curriculum/clone}" method="post">
+                            <input type="hidden" name="sourceCurriculumId" th:value="${curriculumId}">
+                            <input type="hidden" name="academicYear" th:value="${curriculum != null ? curriculum.academic_year : ''}">
+                            <button type="submit" class="btn btn-outline" style="padding: 0.4rem 0.8rem;" onclick="showSpinner('Cloning curriculum to draft...')">
+                                <i class="ti ti-copy" aria-hidden="true"></i> Clone Draft
+                            </button>
+                        </form>
+                        <form th:if="${curriculum != null and (curriculum.approval_status == 'Draft' or curriculum.approval_status == 'Placeholder') and (curriculum.is_active == 0 or curriculum.course_count == 0)}" th:action="@{/admin/curriculum/delete-draft}" method="post">
+                            <input type="hidden" name="curriculumId" th:value="${curriculumId}">
+                            <button type="submit" class="btn btn-outline" style="padding: 0.4rem 0.8rem;" onclick="return confirm('Delete this draft curriculum?')">
+                                <i class="ti ti-trash" aria-hidden="true"></i> Delete
+                            </button>
+                        </form>
+                        <form th:if="${curriculumEditable and curriculum != null and curriculum.course_count > 0}" th:action="@{/admin/curriculum/finalize}" method="post">
+                            <input type="hidden" name="curriculumId" th:value="${curriculumId}">
+                            <button type="submit" class="btn btn-primary" style="padding: 0.4rem 0.8rem;" onclick="return confirm('Finalize and activate this curriculum?')">
+                                <i class="ti ti-check" aria-hidden="true"></i> Finalize
+                            </button>
+                        </form>
+                        <a th:href="@{/admin/curriculum}" class="btn btn-outline" style="padding: 0.4rem 0.8rem;">
+                            <i class="ti ti-arrow-left" aria-hidden="true"></i> Back
+                        </a>
+                    </div>
+                </div>
+                <div th:if="${curriculumEditable}" class="editor-panel">
+                    <form th:action="@{/admin/curriculum/course/add}" method="post" class="editor-grid" id="courseAddForm"
+                          th:attr="data-manual-action=@{/admin/curriculum/course/add},data-existing-action=@{/admin/curriculum/course/add-existing}">
+                        <input type="hidden" name="curriculumId" th:value="${curriculumId}">
+                        <input type="hidden" name="courseId" id="selectedCourseId">
+                        <div>
+                            <label class="form-label">Department</label>
+                            <select id="courseDepartmentFilter" class="form-control">
+                                <option value="">All departments</option>
+                                <option th:each="d : ${departments}" th:value="${d.department_id}" th:text="${d.department_name}">Department</option>
+                            </select>
+                        </div>
+                        <div class="course-picker-wrap">
+                            <label class="form-label">Code</label>
+                            <input name="courseCode" id="courseCodeInput" class="form-control" required autocomplete="off" placeholder="Type to search">
+                        </div>
+                        <div>
+                            <label class="form-label">Title</label>
+                            <input name="courseTitle" id="courseTitleInput" class="form-control" required placeholder="Course title">
+                        </div>
+                        <div>
+                            <label class="form-label">Units</label>
+                            <input name="units" id="courseUnitsInput" type="number" min="1" max="12" class="form-control" value="3">
+                        </div>
+                        <div>
+                            <label class="form-label">Year</label>
+                            <input name="yearLevel" type="number" min="1" max="6" class="form-control" value="1">
+                        </div>
+                        <div>
+                            <label class="form-label">Sem</label>
+                            <select name="semesterNumber" class="form-control">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">Summer</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Prereq</label>
+                            <input name="prerequisites" class="form-control" placeholder="Optional">
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="ti ti-plus"></i> Add</button>
+                        <div id="selectedCoursePill" class="course-selected-pill">
+                            Existing catalog course selected. It will be attached without changing its catalog setup.
+                        </div>
+                        <div id="courseSearchResults" class="course-results"></div>
+                        <div class="course-picker-note">
+                            Search by code or title to reuse an existing course. If no match exists, leave it unselected and add a new manual course.
+                        </div>
+                    </form>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="table-eac">
+                        <thead>
+                        <tr>
+                            <th style="width: 5%;">Yr</th>
+                            <th style="width: 10%;">Sem</th>
+                            <th style="width: 15%;">Code</th>
+                            <th style="width: 35%;">Title</th>
+                            <th style="width: 10%; text-align: center;">Units</th>
+                            <th style="width: 25%;">Prerequisites</th>
+                            <th th:if="${curriculumEditable}" style="width: 20%;">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="c : ${courses}">
+                            <td><span class="yr-badge" th:text="${c.year_level}"></span></td>
+                            <td>
+                                <span class="sem-pill"
+                                      th:classappend="${c.semester_number == 1} ? 'sem-1' : (${c.semester_number == 2} ? 'sem-2' : 'sem-3')"
+                                      th:text="${c.semester_number == 1} ? '1st Sem' : (${c.semester_number == 2} ? '2nd Sem' : 'Summer')">
+                                </span>
+                            </td>
+                            <td style="font-weight: 700; color: var(--primary-color);" th:text="${c.course_code}"></td>
+                            <td style="font-weight: 500;" th:text="${c.course_title}"></td>
+                            <td style="text-align: center;"><span style="background: var(--bg-tertiary); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 600;" th:text="${c.credit_units}"></span></td>
+                            <td>
+                                <span th:text="${c.prerequisites != null ? c.prerequisites : '—'}"
+                                      th:style="${c.prerequisites != null && !c.prerequisites.equals('—')} ? 'color: #d97706; font-size: 0.85rem;' : 'color: var(--text-muted); font-size: 0.85rem;'">
+                                </span>
+                            </td>
+                            <td th:if="${curriculumEditable}">
+                                <form th:action="@{/admin/curriculum/course/update-placement}" method="post" class="placement-form">
+                                    <input type="hidden" name="curriculumId" th:value="${curriculumId}">
+                                    <input type="hidden" name="curriculumCourseId" th:value="${c.curriculum_course_id}">
+                                    <input name="yearLevel" type="number" min="1" max="6" class="form-control" style="width: 64px; padding: .25rem;" th:value="${c.year_level}">
+                                    <select name="semesterNumber" class="form-control" style="width: 86px; padding: .25rem;">
+                                        <option value="1" th:selected="${c.semester_number == 1}">1</option>
+                                        <option value="2" th:selected="${c.semester_number == 2}">2</option>
+                                        <option value="3" th:selected="${c.semester_number == 3}">Summer</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-outline" style="padding: .25rem .45rem;"><i class="ti ti-device-floppy"></i></button>
+                                </form>
+                                <form th:action="@{/admin/curriculum/course/remove}" method="post" style="display: inline-flex; margin: .35rem 0 0 0;">
+                                    <input type="hidden" name="curriculumId" th:value="${curriculumId}">
+                                    <input type="hidden" name="curriculumCourseId" th:value="${c.curriculum_course_id}">
+                                    <button type="submit" class="btn btn-outline" style="padding: .25rem .45rem;" onclick="return confirm('Remove this course row?')"><i class="ti ti-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(courses)}">
+                            <td th:colspan="${curriculumEditable ? 7 : 6}" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                                No courses found for this curriculum.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Program Grid -->
+            <div th:unless="${courses != null}">
+                <div th:if="${#lists.isEmpty(programs)}" style="text-align: center; padding: 5rem 2rem; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--radius-lg); background: white;">
+                    <i class="ti ti-database" style="font-size: 4rem; opacity: 0.3; margin-bottom: 1rem;"></i>
+                    <h4 style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">No programs seeded yet</h4>
+                    <p>Click <strong>"Seed All from Manifest"</strong> to publish the approved curriculum sources.</p>
+                </div>
+
+                <div th:unless="${#lists.isEmpty(programs)}">
+                    <div th:each="school : ${#sets.toSet(programs.![school_name])}" style="margin-bottom: 3rem;">
+                        <h4 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-color);">
+                            <i class="ti ti-building-bank" style="color: var(--primary-color);"></i>
+                            <span th:text="${school}"></span>
+                        </h4>
+                        <div class="program-grid">
+                            <div th:each="p : ${programs}" th:if="${p.school_name == school}" class="program-card">
+                                <span class="school-badge" th:text="${p.school_name}"></span>
+                                <div class="prog-code" th:text="${p.program_code}"></div>
+                                <div class="prog-name" th:text="${p.program_name}"></div>
+                                <div class="curriculum-meta" style="margin-bottom: 1rem;">
+                                    <span class="curriculum-chip" th:text="${p.lifecycle_status ?: 'Missing'}"></span>
+                                    <span class="curriculum-chip" th:if="${p.version_number != null}" th:text="${'v' + p.version_number}"></span>
+                                    <span class="curriculum-chip" th:if="${p.curriculum_id != null}" th:text="${'#' + p.curriculum_id}"></span>
+                                </div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                                    <div class="course-count">
+                                        <i class="ti ti-books" style="color: var(--primary-color); margin-right: 0.25rem;"></i>
+                                        <span th:text="${p.course_count}"></span> courses
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <span class="status-badge" th:classappend="${p.approval_status == 'Approved'} ? 'enrolled' : ''">
+                                            <div class="status-dot"></div>
+                                            <span th:text="${p.approval_status ?: 'Draft'}"></span>
+                                        </span>
+                                        <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); background: var(--bg-tertiary); padding: 0.15rem 0.4rem; border-radius: 4px;" th:text="${p.academic_year}"></span>
+                                    </div>
+                                </div>
+                                <div class="curriculum-actions" style="margin-top: 1rem;">
+                                    <a th:if="${p.curriculum_id != null}" th:href="@{/admin/curriculum/view/{id}(id=${p.curriculum_id})}" class="btn btn-outline" style="padding: 0.35rem 0.65rem;">
+                                        <i class="ti ti-eye"></i> Open
+                                    </a>
+                                    <a th:if="${p.curriculum_id != null}" th:href="@{/admin/curriculum/export/{id}(id=${p.curriculum_id})}" class="btn btn-outline" style="padding: 0.35rem 0.65rem;">
+                                        <i class="ti ti-download"></i> Export
+                                    </a>
+                                    <form th:if="${p.curriculum_id != null}" th:action="@{/admin/curriculum/clone}" method="post">
+                                        <input type="hidden" name="sourceCurriculumId" th:value="${p.curriculum_id}">
+                                        <input type="hidden" name="academicYear" th:value="${p.academic_year}">
+                                        <button type="submit" class="btn btn-outline" style="padding: 0.35rem 0.65rem;" onclick="showSpinner('Cloning curriculum to draft...')">
+                                            <i class="ti ti-copy"></i> Clone
+                                        </button>
+                                    </form>
+                                    <form th:if="${p.curriculum_id != null and (p.approval_status == 'Draft' or p.approval_status == 'Placeholder') and (p.is_active == 0 or p.course_count == 0)}" th:action="@{/admin/curriculum/delete-draft}" method="post">
+                                        <input type="hidden" name="curriculumId" th:value="${p.curriculum_id}">
+                                        <button type="submit" class="btn btn-outline" style="padding: 0.35rem 0.65rem;" onclick="return confirm('Delete this draft curriculum?')">
+                                            <i class="ti ti-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                    <form th:if="${p.curriculum_id == null}" th:action="@{/admin/curriculum/placeholder}" method="post">
+                                        <input type="hidden" name="programCode" th:value="${p.program_code}">
+                                        <button type="submit" class="btn btn-outline" style="padding: 0.35rem 0.65rem;" onclick="showSpinner('Creating curriculum placeholder...')">
+                                            <i class="ti ti-file-plus"></i> Placeholder
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div id="uploadModal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h4 style="margin: 0; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                <i class="ti ti-upload" style="color: var(--primary-color);"></i> Upload Curriculum File
+            </h4>
+            <button class="btn btn-outline" style="border: none; padding: 0.5rem;" onclick="closeModal()">
+                <i class="ti ti-x" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <!-- Drop zone -->
+            <div class="upload-zone" id="dropZone" onclick="document.getElementById('docxFileInput').click()">
+                <i class="ti ti-file-type-doc" aria-hidden="true"></i>
+                <h5 style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">Drag & drop your .docx here</h5>
+                <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">or click to browse from your computer</p>
+                <input type="file" id="docxFileInput" accept=".docx" style="display: none;" onchange="handleFileSelected(this)">
+            </div>
+
+            <!-- Selected file info -->
+            <div id="fileInfo" class="alert alert-info" style="margin-top: 1.5rem; display: none;">
+                <i class="ti ti-file-check" aria-hidden="true"></i>
+                <span id="fileInfoText"></span>
+            </div>
+
+            <!-- School name -->
+            <div style="margin-top: 1.5rem;">
+                <label class="form-label">School / College</label>
+                <select id="schoolNameSelect" class="form-control">
+                    <option value="Marian School of Nursing">Marian School of Nursing</option>
+                    <option value="School of Arts and Sciences">School of Arts and Sciences</option>
+                    <option value="School of Business Education">School of Business Education</option>
+                    <option value="School of Criminology">School of Criminology</option>
+                    <option value="School of Dentistry">School of Dentistry</option>
+                    <option value="School of Engineering and Technology">School of Engineering and Technology</option>
+                    <option value="School of Hospitality and Tourism Management">School of Hospitality and Tourism Management</option>
+                    <option value="School of Medical Technology">School of Medical Technology</option>
+                    <option value="School of Nutrition and Diabetics">School of Nutrition and Diabetics</option>
+                    <option value="School of Pharmacy">School of Pharmacy</option>
+                    <option value="School of Physical, Occupational, And Respiratory Therapy">School of Physical, Occupational, And Respiratory Therapy</option>
+                    <option value="School of Radiologic Technology">School of Radiologic Technology</option>
+                    <option value="School of Teacher Education">School of Teacher Education</option>
+                    <option value="General">General / Other</option>
+                </select>
+            </div>
+
+            <div style="margin-top: 1.5rem;">
+                <label class="form-label">Target Program</label>
+                <select id="programCodeSelect" class="form-control">
+                    <option value="">Select target program</option>
+                    <option th:each="p : ${programOptions}"
+                            th:value="${p.program_code}"
+                            th:text="${p.program_code + ' — ' + p.program_name}"></option>
+                </select>
+            </div>
+
+            <!-- Preview table (populated by AJAX) -->
+            <div id="previewTable">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+                    <h5 style="margin: 0; font-weight: 600; font-size: 1rem;">Preview (<span id="previewCount"></span> courses)</h5>
+                    <span id="previewWarnings" class="alert alert-warning" style="padding: 0.3rem 0.6rem; display: none; margin: 0;"></span>
+                </div>
+                <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                    <table class="table-eac">
+                        <thead style="position: sticky; top: 0; background: white; z-index: 1;">
+                        <tr>
+                            <th style="padding: 0.5rem 1rem;">Yr</th>
+                            <th style="padding: 0.5rem 1rem;">Sem</th>
+                            <th style="padding: 0.5rem 1rem;">Code</th>
+                            <th style="padding: 0.5rem 1rem;">Title</th>
+                            <th style="padding: 0.5rem 1rem; text-align: center;">Units</th>
+                        </tr>
+                        </thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" id="previewBtn" class="btn btn-outline" disabled onclick="runPreview()">
+                <i class="ti ti-eye" aria-hidden="true"></i> Preview
+            </button>
+            <form th:action="@{/admin/curriculum/upload}" method="post" enctype="multipart/form-data" id="uploadForm" style="margin: 0;">
+                <input type="file" name="file" id="hiddenFileInput" style="display: none;" accept=".docx">
+                <input type="hidden" name="schoolName" id="hiddenSchoolName">
+                <input type="hidden" name="programCode" id="hiddenProgramCode">
+                <button type="button" id="confirmSeedBtn" class="btn btn-primary" disabled onclick="confirmSeed()">
+                    <i class="ti ti-device-floppy" aria-hidden="true"></i> Confirm & Save
+                </button>
+            </form>
+            <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Spinner overlay -->
+<div class="spinner-overlay" id="spinnerOverlay">
+    <i class="ti ti-loader ti-spin" style="font-size: 3rem;" aria-hidden="true"></i>
+    <span id="spinnerMsg">Processing…</span>
+</div>
+
+<script>
+    function closeModal() {
+        document.getElementById('uploadModal').classList.remove('show');
+    }
+
+    // Drop Zone Logic
+    const dropZone = document.getElementById('dropZone');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) applyFile(file);
+    });
+
+    let selectedFile = null;
+
+    function handleFileSelected(input) {
+        if (input.files.length) applyFile(input.files[0]);
+    }
+
+    function applyFile(file) {
+        if (!file.name.toLowerCase().endsWith('.docx')) {
+            alert('Please select a .docx file.');
+            return;
+        }
+        selectedFile = file;
+        const fileInfo = document.getElementById('fileInfo');
+        fileInfo.style.display = 'flex';
+        document.getElementById('fileInfoText').textContent = file.name + '  (' + (file.size / 1024).toFixed(1) + ' KB)';
+        document.getElementById('previewBtn').disabled = false;
+        document.getElementById('previewTable').style.display = 'none';
+        document.getElementById('confirmSeedBtn').disabled = true;
+    }
+
+    async function runPreview() {
+        if (!selectedFile) return;
+        const btn = document.getElementById('previewBtn');
+        btn.innerHTML = '<i class="ti ti-loader ti-spin"></i> Parsing…';
+        btn.disabled = true;
+
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+        fd.append('schoolName', document.getElementById('schoolNameSelect').value);
+        fd.append('programCode', document.getElementById('programCodeSelect').value);
+
+        try {
+            const resp = await fetch(ctx + 'admin/curriculum/preview', {
+                method: 'POST',
+                headers: window.registrarCsrf ? window.registrarCsrf.headers() : {},
+                body: fd
+            });
+            if (!resp.ok) throw new Error(await resp.text());
+            const data = await resp.json();
+
+            document.getElementById('previewCount').textContent = data.courseCount;
+            const tbody = document.getElementById('previewBody');
+            tbody.innerHTML = '';
+            (data.courses || []).forEach(c => {
+                const semLabel = c.semester == 1 ? '1st' : c.semester == 2 ? '2nd' : 'Sum';
+                const semClass = c.semester == 1 ? 'sem-1' : c.semester == 2 ? 'sem-2' : 'sem-3';
+                tbody.innerHTML += `<tr>
+                    <td style="padding: 0.5rem 1rem;"><span class="yr-badge">${c.year_level}</span></td>
+                    <td style="padding: 0.5rem 1rem;"><span class="sem-pill ${semClass}">${semLabel}</span></td>
+                    <td style="padding: 0.5rem 1rem; font-weight: 700; color: var(--primary-color);">${c.course_code}</td>
+                    <td style="padding: 0.5rem 1rem; font-weight: 500;">${c.course_title}</td>
+                    <td style="padding: 0.5rem 1rem; text-align: center;"><span style="background: var(--bg-tertiary); padding: 0.2rem 0.5rem; border-radius: 4px;">${c.units}</span></td>
+                </tr>`;
+            });
+
+            const warnBadge = document.getElementById('previewWarnings');
+            if (data.warnings && data.warnings.length > 0) {
+                warnBadge.innerHTML = `<i class="ti ti-alert-circle"></i> ${data.warnings.length} warning(s)`;
+                warnBadge.style.display = 'flex';
+            } else {
+                warnBadge.style.display = 'none';
+            }
+
+            document.getElementById('previewTable').style.display = 'block';
+            document.getElementById('confirmSeedBtn').disabled = false;
+        } catch (err) {
+            alert('Preview failed: ' + err.message);
+        } finally {
+            btn.innerHTML = '<i class="ti ti-eye"></i> Preview';
+            btn.disabled = false;
+        }
+    }
+
+    function confirmSeed() {
+        if (!selectedFile) return;
+        const programCode = document.getElementById('programCodeSelect').value;
+        if (!programCode) {
+            alert('Select the target program before saving this curriculum.');
+            return;
+        }
+        const dt = new DataTransfer();
+        dt.items.add(selectedFile);
+        document.getElementById('hiddenFileInput').files = dt.files;
+        document.getElementById('hiddenSchoolName').value = document.getElementById('schoolNameSelect').value;
+        document.getElementById('hiddenProgramCode').value = programCode;
+        showSpinner('Saving curriculum to database…');
+        document.getElementById('uploadForm').submit();
+    }
+
+    const courseAddForm = document.getElementById('courseAddForm');
+    const courseCodeInput = document.getElementById('courseCodeInput');
+    const courseTitleInput = document.getElementById('courseTitleInput');
+    const courseUnitsInput = document.getElementById('courseUnitsInput');
+    const selectedCourseId = document.getElementById('selectedCourseId');
+    const selectedCoursePill = document.getElementById('selectedCoursePill');
+    const courseDepartmentFilter = document.getElementById('courseDepartmentFilter');
+    const courseSearchResults = document.getElementById('courseSearchResults');
+    let courseSearchTimer = null;
+
+    function escapeText(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function clearSelectedCourse() {
+        if (!selectedCourseId) return;
+        selectedCourseId.value = '';
+        courseTitleInput.readOnly = false;
+        courseUnitsInput.readOnly = false;
+        selectedCoursePill.classList.remove('active');
+        if (courseAddForm && courseAddForm.dataset.manualAction) {
+            courseAddForm.action = courseAddForm.dataset.manualAction;
+        }
+    }
+
+    function pickExistingCourse(course) {
+        selectedCourseId.value = course.course_id;
+        courseCodeInput.value = course.course_code || '';
+        courseTitleInput.value = course.course_title || '';
+        courseUnitsInput.value = course.credit_units || 3;
+        courseTitleInput.readOnly = true;
+        courseUnitsInput.readOnly = true;
+        selectedCoursePill.textContent = `${course.course_code} selected from ${course.department_name || 'catalog'}. It will be attached without changing catalog details.`;
+        selectedCoursePill.classList.add('active');
+        courseSearchResults.classList.remove('active');
+        courseSearchResults.innerHTML = '';
+        if (courseAddForm && courseAddForm.dataset.existingAction) {
+            courseAddForm.action = courseAddForm.dataset.existingAction;
+        }
+    }
+
+    function renderCourseResults(courses) {
+        if (!courseSearchResults) return;
+        if (!courses || courses.length === 0) {
+            courseSearchResults.innerHTML = '<div class="course-result-empty">No matching catalog course. You can still add this as a new manual course.</div>';
+            courseSearchResults.classList.add('active');
+            return;
+        }
+        courseSearchResults.innerHTML = courses.map((course, index) => `
+            <button type="button" class="course-result" data-index="${index}">
+                <span class="course-result-code">${escapeText(course.course_code)}</span>
+                <span>${escapeText(course.course_title)}</span>
+                <span class="course-result-meta">${escapeText(course.credit_units)} unit(s)</span>
+                <span class="course-result-meta">${escapeText(course.department_name)}</span>
+            </button>
+        `).join('');
+        courseSearchResults.querySelectorAll('.course-result').forEach(button => {
+            button.addEventListener('click', () => pickExistingCourse(courses[Number(button.dataset.index)]));
+        });
+        courseSearchResults.classList.add('active');
+    }
+
+    async function searchCourses() {
+        if (!courseCodeInput || !courseSearchResults) return;
+        const q = courseCodeInput.value.trim();
+        const departmentId = courseDepartmentFilter ? courseDepartmentFilter.value : '';
+        if (q.length < 2 && !departmentId) {
+            courseSearchResults.classList.remove('active');
+            courseSearchResults.innerHTML = '';
+            return;
+        }
+        const params = new URLSearchParams();
+        params.set('q', q);
+        if (departmentId) params.set('departmentId', departmentId);
+        try {
+            const response = await fetch(`${ctx}admin/curriculum/course-search?${params.toString()}`);
+            if (!response.ok) throw new Error('Search failed');
+            renderCourseResults(await response.json());
+        } catch (err) {
+            courseSearchResults.innerHTML = '<div class="course-result-empty">Course search is unavailable right now. You can still add manually.</div>';
+            courseSearchResults.classList.add('active');
+        }
+    }
+
+    if (courseCodeInput) {
+        courseCodeInput.addEventListener('input', () => {
+            clearSelectedCourse();
+            clearTimeout(courseSearchTimer);
+            courseSearchTimer = setTimeout(searchCourses, 220);
+        });
+        courseCodeInput.addEventListener('focus', () => {
+            clearTimeout(courseSearchTimer);
+            courseSearchTimer = setTimeout(searchCourses, 80);
+        });
+    }
+    if (courseDepartmentFilter) {
+        courseDepartmentFilter.addEventListener('change', () => {
+            clearSelectedCourse();
+            searchCourses();
+        });
+    }
+    if (courseAddForm) {
+        courseAddForm.addEventListener('submit', () => {
+            courseAddForm.action = selectedCourseId && selectedCourseId.value
+                ? courseAddForm.dataset.existingAction
+                : courseAddForm.dataset.manualAction;
+        });
+    }
+    document.addEventListener('click', event => {
+        if (!courseSearchResults || !courseAddForm) return;
+        if (!courseAddForm.contains(event.target)) {
+            courseSearchResults.classList.remove('active');
+        }
+    });
+
+    function showSpinner(msg) {
+        document.getElementById('spinnerMsg').textContent = msg || 'Processing…';
+        document.getElementById('spinnerOverlay').classList.add('active');
+    }
+</script>
+</body>
+</html>

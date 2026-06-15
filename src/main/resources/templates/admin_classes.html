@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body>
+<div class="app">
+    <div th:replace="~{fragments/layout :: topbar}"></div>
+
+    <div class="body-wrapper">
+        <nav th:replace="~{fragments/layout :: sidebar(activeLink='classes')}"></nav>
+
+        <main class="main" role="main" id="main-content">
+            <div class="breadcrumb" aria-label="Breadcrumb">
+                <i class="ti ti-home" aria-hidden="true"></i>
+                <i class="ti ti-chevron-right" aria-hidden="true"></i>
+                <span>Academics</span>
+                <i class="ti ti-chevron-right" aria-hidden="true"></i>
+                <span>Subjects</span>
+            </div>
+
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Subject Management</h1>
+                    <p class="page-subtitle">Manage class offerings, instructor assignments, and statuses.</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title" style="margin: 0; color: var(--primary-color);"><i class="ti ti-books" aria-hidden="true"></i> All Class Offerings</h5>
+                </div>
+                <div class="search-bar" role="search">
+                    <i class="ti ti-search" aria-hidden="true"></i>
+                    <input type="text" id="classSearch" placeholder="Search by program (BSIT), section code, course, or instructor…" aria-label="Search classes" oninput="filterClasses()"/>
+                </div>
+                <div id="classCount" style="padding: 0 1.5rem 0.5rem; font-size: 0.8rem; color: var(--text-muted);"></div>
+                <div class="filter-pills" role="group" aria-label="Filter classes">
+                    <div class="pill active" role="button" tabindex="0">All</div>
+                    <div class="pill" role="button" tabindex="0">Open / Draft</div>
+                    <div class="pill" role="button" tabindex="0">Submitted</div>
+                    <div class="pill" role="button" tabindex="0">Approved</div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="table-eac" style="margin: 0;">
+                        <thead style="background: var(--bg-tertiary);">
+                            <tr>
+                                <th>Course</th>
+                                <th>Description</th>
+                                <th>Instructor</th>
+                                <th>Schedule</th>
+                                <th>Status</th>
+                                <th style="text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="c : ${classes}" class="class-row"
+                                th:attr="data-search=${(c.course_code != null ? c.course_code : '') + ' ' + (c.section != null ? c.section : '') + ' ' + (c.description != null ? c.description : '') + ' ' + (c.faculty_name != null ? c.faculty_name : '') + ' ' + (c.pretty_schedule != null ? c.pretty_schedule : '')}">
+                                <td style="font-weight: 700; color: var(--primary-color);" th:text="${c.course_code + ' - ' + c.section}"></td>
+                                <td th:text="${c.description}"></td>
+                                <td th:text="${c.faculty_name != null ? c.faculty_name : 'TBA'}"></td>
+                                <td style="font-size: 0.85rem; color: var(--text-muted);" th:text="${c.pretty_schedule}"></td>
+                                <td>
+                                    <span class="status-badge" th:classappend="${c.status == 'OPEN' ? 'enrolled' : (c.status == 'PENDING_APPROVAL' ? 'waitlist' : 'inactive')}" th:text="${c.status == 'OPEN' ? 'OPEN / DRAFT' : c.status}"></span>
+                                </td>
+                                <td style="text-align: right;">
+                                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                        <a th:href="@{/admin/classes/view/{id}(id=${c.schedule_id})}" class="btn btn-ghost" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;"><i class="ti ti-eye"></i> View</a>
+                                        
+                                        <form th:if="${c.status == 'OPEN'}" th:action="@{/admin/toggle-unlock}" method="post" style="margin: 0;">
+                                            <input type="hidden" name="scheduleId" th:value="${c.schedule_id}">
+                                            <input type="hidden" name="unlockStatus" th:value="${c.is_unlocked == 1 ? 0 : 1}">
+                                            <button type="submit" class="btn btn-primary" th:style="${c.is_unlocked == 1 ? 'background: var(--text-muted); border-color: var(--text-muted);' : 'background: #D97706; border-color: #D97706;'}" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" th:title="${c.is_unlocked == 1 ? 'Remove Override' : 'Override Date Limits'}">
+                                                <i class="ti" th:classappend="${c.is_unlocked == 1 ? 'ti-lock' : 'ti-lock-open'}"></i>
+                                            </button>
+                                        </form>
+
+                                        <form th:if="${c.status == 'SUBMITTED'}" th:action="@{/admin/revert-class}" method="post" style="margin: 0;" onsubmit="return confirm('WARNING: This will UN-FINALIZE the class and return it to DRAFT mode for the professor. Continue?');">
+                                            <input type="hidden" name="scheduleId" th:value="${c.schedule_id}">
+                                            <button type="submit" class="btn btn-primary" style="background: #DC2626; border-color: #DC2626; padding: 0.25rem 0.5rem; font-size: 0.85rem;" title="Re-open for Editing">
+                                                <i class="ti ti-arrow-back-up"></i> Revert
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(classes)}"><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No class offerings found.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+</div>
+<script>
+    function filterClasses() {
+        const query = (document.getElementById('classSearch')?.value || '').toLowerCase().trim();
+        const rows = document.querySelectorAll('.class-row');
+        let visible = 0;
+        rows.forEach(row => {
+            const hay = (row.getAttribute('data-search') || '').toLowerCase();
+            const match = !query || hay.includes(query);
+            row.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        const badge = document.getElementById('classCount');
+        if (badge) {
+            badge.textContent = query
+                ? visible + ' / ' + rows.length + ' sections shown'
+                : rows.length + ' sections for active term';
+        }
+        const emptyRow = document.querySelector('tbody tr:not(.class-row)');
+        if (emptyRow) emptyRow.style.display = rows.length === 0 ? '' : 'none';
+    }
+    document.addEventListener('DOMContentLoaded', filterClasses);
+</script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Tabler Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <!-- Custom Theme (EAC) -->
+    <link rel="stylesheet" th:href="@{/css/theme-eac.css}">
+    <th:block th:replace="~{fragments/csrf :: support}"></th:block>
+</head>
+<body>
+
+<!-- TOPBAR FRAGMENT -->
+<div th:fragment="topbar" class="topbar">
+    <div class="topbar-left">
+        <div class="logo-mark">
+            <!-- EAC Shield Icon (Generic/Placeholder matching spec) -->
+            <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="EAC shield logo">
+                <path d="M9 2L3 5.5V9C3 12.31 5.54 15.41 9 16C12.46 15.41 15 12.31 15 9V5.5L9 2Z" fill="#B91C1C"/>
+                <path d="M7 9L8.5 10.5L11.5 7.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <div>
+            <div class="school-name">Emilio Aguinaldo College</div>
+            <div class="school-sub">Registrar Portal</div>
+        </div>
+    </div>
+    <div class="topbar-right">
+        <form id="globalSearchForm" onsubmit="handleGlobalSearch(event)" style="display:inline-block; margin-right: 1rem; position: relative;">
+            <input type="text" id="globalSearchInput" placeholder="Search features..." style="padding: 0.35rem 0.75rem; border-radius: 4px; border: 1px solid var(--border-color); background: var(--surface-color); color: var(--text-color); font-size: 0.85rem;" />
+            <button type="submit" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted);">
+                <i class="ti ti-search" aria-hidden="true" style="font-size: 1rem;"></i>
+            </button>
+        </form>
+        <a th:href="@{/admin/admission-acceptance}" class="top-icon-btn" title="Notifications" aria-label="Notifications" style="text-decoration:none; position:relative;">
+            <i class="ti ti-bell" aria-hidden="true"></i>
+            <span class="notif-dot" th:if="${pendingApps != null && pendingApps > 0}"></span>
+            <span class="notif-badge" th:if="${pendingApps != null && pendingApps > 0}" th:text="${pendingApps}" style="position:absolute; top:-4px; right:-4px; background:var(--danger-color); color:white; font-size:0.6rem; padding:0.1rem 0.3rem; border-radius:10px; font-weight:bold;">1</span>
+        </a>
+        <button class="top-icon-btn" title="Help" aria-label="Help">
+            <i class="ti ti-help" aria-hidden="true"></i>
+        </button>
+        <!-- The initials could be dynamic based on the logged-in user in a real scenario -->
+        <div class="avatar" title="Registrar" role="button" tabindex="0" aria-label="Account menu" th:text="${user != null ? #strings.substring(user.username, 0, 2).toUpperCase() : 'RG'}">RG</div>
+    </div>
+</div>
+
+<script>
+    function handleGlobalSearch(e) {
+        e.preventDefault();
+        const query = document.getElementById('globalSearchInput').value.toLowerCase().trim();
+        if (!query) return;
+        
+        if (query.includes('student') || query.includes('directory')) {
+            window.location.href = '/admin/student-manager';
+        } else if (query.includes('admission') || query.includes('applicant')) {
+            window.location.href = '/admin/admission-acceptance';
+        } else if (query.includes('fee') || query.includes('finance')) {
+            window.location.href = '/admin/term-fees';
+        } else if (query.includes('grade')) {
+            window.location.href = '/admin/approvals';
+        } else if (query.includes('course') || query.includes('catalog') || query.includes('subject')) {
+            window.location.href = '/admin/courses';
+        } else if (query.includes('curriculum')) {
+            window.location.href = '/admin/curriculum';
+        } else if (query.includes('setting')) {
+            window.location.href = '/admin/settings';
+        } else if (query.includes('scholarship')) {
+            window.location.href = '/admin/scholarships';
+        } else {
+            // fallback
+            window.location.href = '/admin/settings';
+        }
+    }
+</script>
+
+<!-- SIDEBAR FRAGMENT -->
+<nav th:fragment="sidebar(activeLink)" class="sidebar" role="navigation" aria-label="Main navigation">
+    <div class="nav-section-label">Overview</div>
+    <a th:href="@{/}" class="nav-item" th:classappend="${activeLink == 'dashboard' ? 'active' : ''}">
+        <i class="ti ti-layout-dashboard" aria-hidden="true"></i> <span>Dashboard</span>
+    </a>
+
+    <div class="nav-section-label">Admissions</div>
+    <a th:href="@{/admin/admission-acceptance}" class="nav-item" th:classappend="${activeLink == 'admissions' ? 'active' : ''}">
+        <i class="ti ti-user-check" aria-hidden="true"></i> <span>Admissions</span>
+    </a>
+    <a th:href="@{/admin/student-manager}" class="nav-item" th:classappend="${activeLink == 'students' ? 'active' : ''}">
+        <i class="ti ti-users" aria-hidden="true"></i> <span>Student Profile</span>
+    </a>
+
+    <div class="nav-section-label">Academics</div>
+    <a th:href="@{/admin/curriculum}" class="nav-item" th:classappend="${activeLink == 'curriculum' ? 'active' : ''}">
+        <i class="ti ti-book" aria-hidden="true"></i> <span>Curriculum</span>
+    </a>
+    <a th:href="@{/admin/courses}" class="nav-item" th:classappend="${activeLink == 'courses' ? 'active' : ''}">
+        <i class="ti ti-books" aria-hidden="true"></i> <span>Course Catalog</span>
+    </a>
+    <a th:href="@{/admin/classes}" class="nav-item" th:classappend="${activeLink == 'classes' ? 'active' : ''}">
+        <i class="ti ti-school" aria-hidden="true"></i> <span>Class Records</span>
+    </a>
+    <a th:href="@{/admin/class-scheduling}" class="nav-item" th:classappend="${activeLink == 'scheduling' ? 'active' : ''}">
+        <i class="ti ti-calendar-time" aria-hidden="true"></i> <span>Class Scheduling</span>
+    </a>
+    <a th:href="@{/admin/faculty-load}" class="nav-item" th:classappend="${activeLink == 'faculty' ? 'active' : ''}">
+        <i class="ti ti-chalkboard" aria-hidden="true"></i> <span>Faculty Load</span>
+    </a>
+    <a th:href="@{/admin/approvals}" class="nav-item" th:classappend="${activeLink == 'grades' ? 'active' : ''}">
+        <i class="ti ti-table" aria-hidden="true"></i> <span>Grade Records</span>
+    </a>
+    <a th:href="@{/admin/withdrawals}" class="nav-item" th:classappend="${activeLink == 'withdrawals' ? 'active' : ''}">
+        <i class="ti ti-file-minus" aria-hidden="true"></i> <span>Withdrawals</span>
+    </a>
+    <a th:href="@{/admin/reg-form-history}" class="nav-item" th:classappend="${activeLink == 'regform-history' ? 'active' : ''}">
+        <i class="ti ti-history" aria-hidden="true"></i> <span>Reg Form History</span>
+    </a>
+    <a th:href="@{/admin/document-trail}" class="nav-item" th:classappend="${activeLink == 'document-trail' ? 'active' : ''}">
+        <i class="ti ti-route" aria-hidden="true"></i> <span>Document Trail</span>
+    </a>
+
+    <div class="nav-section-label">Admin & Finance</div>
+    <a th:href="@{/admin/finance-policy}" class="nav-item" th:classappend="${activeLink == 'finance-policy' ? 'active' : ''}">
+        <i class="ti ti-calculator" aria-hidden="true"></i> <span>Finance Policy</span>
+    </a>
+    <a th:href="@{/admin/term-fees}" class="nav-item" th:classappend="${activeLink == 'term-fees' ? 'active' : ''}">
+        <i class="ti ti-coin" aria-hidden="true"></i> <span>Term Fees</span>
+    </a>
+    <a th:href="@{/admin/scholarships}" class="nav-item" th:classappend="${activeLink == 'scholarships' ? 'active' : ''}">
+        <i class="ti ti-award" aria-hidden="true"></i> <span>Scholarships</span>
+    </a>
+    <a th:href="@{/admin/users}" class="nav-item" th:classappend="${activeLink == 'users' ? 'active' : ''}">
+        <i class="ti ti-users-group" aria-hidden="true"></i> <span>Users &amp; Access</span>
+    </a>
+    <a th:href="@{/admin/settings}" class="nav-item" th:classappend="${activeLink == 'settings' ? 'active' : ''}">
+        <i class="ti ti-settings" aria-hidden="true"></i> <span>Settings</span>
+    </a>
+</nav>
+
+</body>
+</html>

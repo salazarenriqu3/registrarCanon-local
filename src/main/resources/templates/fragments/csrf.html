@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="support" th:if="${_csrf != null}">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <meta name="_csrf_parameter" th:content="${_csrf.parameterName}">
+    <script>
+        (function () {
+            const tokenMeta = document.querySelector('meta[name="_csrf"]');
+            const headerMeta = document.querySelector('meta[name="_csrf_header"]');
+            const parameterMeta = document.querySelector('meta[name="_csrf_parameter"]');
+            if (!tokenMeta || !headerMeta || !parameterMeta) {
+                return;
+            }
+
+            const token = tokenMeta.getAttribute('content');
+            const headerName = headerMeta.getAttribute('content');
+            const parameterName = parameterMeta.getAttribute('content');
+
+            window.registrarCsrf = {
+                token: token,
+                headerName: headerName,
+                parameterName: parameterName,
+                headers(extraHeaders = {}) {
+                    const headers = Object.assign({}, extraHeaders);
+                    if (token) {
+                        headers[headerName] = token;
+                    }
+                    return headers;
+                }
+            };
+
+            function isStateChangingForm(form) {
+                const method = (form.getAttribute('method') || '').toLowerCase();
+                if (['post', 'put', 'patch', 'delete'].includes(method)) {
+                    return true;
+                }
+
+                const overrideControls = form.querySelectorAll('[formmethod]');
+                for (const control of overrideControls) {
+                    const overrideMethod = (control.getAttribute('formmethod') || '').toLowerCase();
+                    if (['post', 'put', 'patch', 'delete'].includes(overrideMethod)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            function ensureTokenInput(form) {
+                if (!isStateChangingForm(form)) {
+                    return;
+                }
+
+                if (form.querySelector('input[name="' + parameterName + '"]')) {
+                    return;
+                }
+
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = parameterName;
+                input.value = token;
+                form.prepend(input);
+            }
+
+            function hydrateForms() {
+                document.querySelectorAll('form').forEach(ensureTokenInput);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', hydrateForms, { once: true });
+            } else {
+                hydrateForms();
+            }
+        })();
+    </script>
+</th:block>
+</body>
+</html>

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <title>Course Catalog - EAC Registrar</title>
+    <th:block th:replace="~{fragments/layout :: head}"></th:block>
+    <style>
+        .catalog-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .catalog-actions {
+            display: flex;
+            gap: .6rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1rem 1.25rem;
+            box-shadow: var(--shadow-sm);
+        }
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1.1;
+        }
+        .stat-label {
+            color: var(--text-muted);
+            font-size: .78rem;
+            font-weight: 700;
+            letter-spacing: .04em;
+            margin-top: .35rem;
+            text-transform: uppercase;
+        }
+        .filter-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .filter-row {
+            display: flex;
+            gap: .8rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .filter-row > div {
+            min-width: 180px;
+        }
+        .filter-row .grow {
+            flex: 1;
+            min-width: 240px;
+        }
+        .course-code {
+            color: var(--primary-color);
+            font-weight: 800;
+        }
+        .usage-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .35rem;
+        }
+        .usage-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .25rem;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-size: .74rem;
+            font-weight: 700;
+            padding: .18rem .5rem;
+        }
+        .usage-chip.warn {
+            border-color: rgba(217, 119, 6, .25);
+            background: rgba(217, 119, 6, .08);
+            color: #b45309;
+        }
+        .row-actions {
+            display: flex;
+            gap: .35rem;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1050;
+            inset: 0;
+            background: rgba(0, 0, 0, .48);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-dialog {
+            width: min(680px, 100%);
+            max-height: 92vh;
+            overflow-y: auto;
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+        }
+        .modal-header,
+        .modal-footer {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .modal-footer {
+            border-top: 1px solid var(--border-color);
+            border-bottom: 0;
+            justify-content: flex-end;
+        }
+        .modal-body {
+            padding: 1.5rem;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+        .form-grid .wide {
+            grid-column: 1 / -1;
+        }
+        .hint-box {
+            margin-top: 1rem;
+            color: var(--text-muted);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: .75rem .9rem;
+            font-size: .86rem;
+        }
+        @media (max-width: 760px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .row-actions {
+                justify-content: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <th:block th:replace="~{fragments/layout :: topbar}"></th:block>
+
+    <div class="body-wrapper">
+        <th:block th:replace="~{fragments/layout :: sidebar('courses')}"></th:block>
+
+        <main class="main" role="main">
+            <div th:if="${successMsg}" class="alert alert-success" style="margin-bottom: 1.5rem;">
+                <i class="ti ti-check" aria-hidden="true"></i>
+                <span th:text="${successMsg}"></span>
+            </div>
+            <div th:if="${errorMsg}" class="alert alert-danger" style="margin-bottom: 1.5rem;">
+                <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+                <span th:text="${errorMsg}"></span>
+            </div>
+
+            <div class="breadcrumb" aria-label="Breadcrumb">
+                <i class="ti ti-home" aria-hidden="true"></i>
+                <i class="ti ti-chevron-right" aria-hidden="true"></i>
+                <span>Academics</span>
+                <i class="ti ti-chevron-right" aria-hidden="true"></i>
+                <span>Course Catalog</span>
+            </div>
+
+            <div class="catalog-header">
+                <div>
+                    <h1 class="page-title">Course Catalog</h1>
+                    <p class="page-subtitle">Manage shared course records used by curriculum, scheduling, grading, and enrollment.</p>
+                </div>
+                <div class="catalog-actions">
+                    <a th:href="@{/admin/curriculum}" class="btn btn-outline">
+                        <i class="ti ti-book" aria-hidden="true"></i> Curriculum
+                    </a>
+                    <button type="button" class="btn btn-primary" onclick="openCourseModal()">
+                        <i class="ti ti-plus" aria-hidden="true"></i> New Course
+                    </button>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" th:text="${summary.total}">0</div>
+                    <div class="stat-label">Courses Shown</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" th:text="${summary.active}">0</div>
+                    <div class="stat-label">Active</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" th:text="${summary.inactive}">0</div>
+                    <div class="stat-label">Inactive</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" th:text="${summary.used}">0</div>
+                    <div class="stat-label">Used Somewhere</div>
+                </div>
+            </div>
+
+            <div class="filter-card">
+                <form th:action="@{/admin/courses}" method="get" class="filter-row">
+                    <div class="grow">
+                        <label class="form-label">Search</label>
+                        <input name="search" class="form-control" th:value="${search}" placeholder="Code or title">
+                    </div>
+                    <div>
+                        <label class="form-label">Department</label>
+                        <select name="departmentId" class="form-control">
+                            <option value="">All departments</option>
+                            <option th:each="d : ${departments}" th:value="${d.department_id}" th:text="${d.department_name}" th:selected="${d.department_id == selectedDepartmentId}">Department</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-control">
+                            <option value="active" th:selected="${selectedStatus == null or selectedStatus == 'active'}">Active</option>
+                            <option value="inactive" th:selected="${selectedStatus == 'inactive'}">Inactive</option>
+                            <option value="all" th:selected="${selectedStatus == 'all'}">All</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="ti ti-filter" aria-hidden="true"></i> Apply
+                    </button>
+                    <a th:href="@{/admin/courses}" class="btn btn-outline">Reset</a>
+                </form>
+            </div>
+
+            <div class="card" style="padding: 0; overflow: hidden;">
+                <div style="overflow-x: auto;">
+                    <table class="table-eac" style="margin: 0;">
+                        <thead>
+                        <tr>
+                            <th style="width: 14%; padding-left: 1.25rem;">Code</th>
+                            <th style="width: 28%;">Title</th>
+                            <th style="width: 9%; text-align: center;">Units</th>
+                            <th style="width: 20%;">Department</th>
+                            <th style="width: 10%; text-align: center;">Status</th>
+                            <th style="width: 22%;">Usage</th>
+                            <th style="width: 16%; text-align: right; padding-right: 1.25rem;">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="c : ${courses}" th:id="'course-' + ${c.course_id}">
+                            <td style="padding-left: 1.25rem;"><span class="course-code" th:text="${c.course_code}">CODE</span></td>
+                            <td th:text="${c.course_title}">Title</td>
+                            <td style="text-align: center;">
+                                <span style="background: var(--bg-tertiary); padding: .2rem .6rem; border-radius: 4px; font-weight: 700;" th:text="${c.credit_units}">3</span>
+                            </td>
+                            <td style="color: var(--text-muted); font-size: .86rem;" th:text="${c.department_name}">Department</td>
+                            <td style="text-align: center;">
+                                <span class="status-badge" th:classappend="${c.active_status == 1} ? 'enrolled' : 'inactive'" th:text="${c.active_status == 1} ? 'Active' : 'Inactive'">Active</span>
+                            </td>
+                            <td>
+                                <div class="usage-stack">
+                                    <span class="usage-chip" th:classappend="${c.curriculum_usage > 0} ? 'warn' : ''">
+                                        <i class="ti ti-book" aria-hidden="true"></i>
+                                        <span th:text="${c.curriculum_usage} + ' curriculum'">0 curriculum</span>
+                                    </span>
+                                    <span class="usage-chip" th:classappend="${c.section_usage > 0} ? 'warn' : ''">
+                                        <i class="ti ti-calendar" aria-hidden="true"></i>
+                                        <span th:text="${c.section_usage} + ' section'">0 section</span>
+                                    </span>
+                                    <span class="usage-chip" th:classappend="${c.enlistment_usage > 0 or c.grade_usage > 0} ? 'warn' : ''">
+                                        <i class="ti ti-users" aria-hidden="true"></i>
+                                        <span th:text="${c.enlistment_usage + c.grade_usage} + ' record'">0 record</span>
+                                    </span>
+                                    <span class="usage-chip" th:classappend="${c.prerequisite_usage > 0} ? 'warn' : ''">
+                                        <i class="ti ti-link" aria-hidden="true"></i>
+                                        <span th:text="${c.prerequisite_usage} + ' prereq'">0 prereq</span>
+                                    </span>
+                                </div>
+                            </td>
+                            <td style="padding-right: 1.25rem;">
+                                <div class="row-actions">
+                                    <button type="button" class="btn btn-outline" style="padding: .3rem .55rem;"
+                                            th:attr="data-course-id=${c.course_id},data-course-code=${c.course_code},data-course-title=${c.course_title},data-department-id=${c.department_id},data-credit-units=${c.credit_units},data-active=${c.active_status}"
+                                            onclick="openCourseModal(this)">
+                                        <i class="ti ti-pencil" aria-hidden="true"></i>
+                                    </button>
+                                    <form th:action="@{/admin/courses/status}" method="post" style="margin: 0;">
+                                        <input type="hidden" name="courseId" th:value="${c.course_id}">
+                                        <input type="hidden" name="active" th:value="${c.active_status == 1 ? false : true}">
+                                        <input type="hidden" name="returnSearch" th:value="${search}">
+                                        <input type="hidden" name="returnDepartmentId" th:value="${selectedDepartmentId}">
+                                        <input type="hidden" name="returnStatus" th:value="${selectedStatus}">
+                                        <button type="submit" class="btn btn-outline" style="padding: .3rem .55rem;"
+                                                th:onclick="${c.active_status == 1} ? 'return confirm(''Deactivate this course? Existing curriculum/history links remain intact.'')' : null"
+                                                th:title="${c.active_status == 1} ? 'Deactivate' : 'Reactivate'">
+                                            <i class="ti" th:classappend="${c.active_status == 1} ? 'ti-eye-off' : 'ti-eye'" aria-hidden="true"></i>
+                                        </button>
+                                    </form>
+                                    <form th:if="${c.usage_count == 0}" th:action="@{/admin/courses/delete-unused}" method="post" style="margin: 0;">
+                                        <input type="hidden" name="courseId" th:value="${c.course_id}">
+                                        <input type="hidden" name="returnSearch" th:value="${search}">
+                                        <input type="hidden" name="returnDepartmentId" th:value="${selectedDepartmentId}">
+                                        <input type="hidden" name="returnStatus" th:value="${selectedStatus}">
+                                        <button type="submit" class="btn btn-outline" style="padding: .3rem .55rem;" onclick="return confirm('Delete this unused course from the catalog?')">
+                                            <i class="ti ti-trash" aria-hidden="true"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(courses)}">
+                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                                No courses found for the selected filters.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<div class="modal" id="courseModal" aria-hidden="true">
+    <div class="modal-dialog">
+        <form th:action="@{/admin/courses/save}" method="post" id="courseForm">
+            <div class="modal-header">
+                <div>
+                    <h3 id="courseModalTitle" style="margin: 0;">New Course</h3>
+                    <p style="margin: .25rem 0 0; color: var(--text-muted); font-size: .88rem;">Shared catalog details are reused by curriculum and scheduling.</p>
+                </div>
+                <button type="button" class="btn btn-outline" style="padding: .3rem .6rem;" onclick="closeCourseModal()">Close</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="courseId" id="courseId">
+                <input type="hidden" name="returnSearch" th:value="${search}">
+                <input type="hidden" name="returnDepartmentId" th:value="${selectedDepartmentId}">
+                <input type="hidden" name="returnStatus" th:value="${selectedStatus}">
+
+                <div class="form-grid">
+                    <div>
+                        <label class="form-label">Course Code</label>
+                        <input name="courseCode" id="courseCode" class="form-control" required placeholder="COURSE 101">
+                    </div>
+                    <div>
+                        <label class="form-label">Credit Units</label>
+                        <input name="creditUnits" id="creditUnits" type="number" min="1" max="12" class="form-control" value="3" required>
+                    </div>
+                    <div class="wide">
+                        <label class="form-label">Course Title</label>
+                        <input name="courseTitle" id="courseTitle" class="form-control" required placeholder="Course title">
+                    </div>
+                    <div>
+                        <label class="form-label">Department Owner</label>
+                        <select name="departmentId" id="departmentId" class="form-control" required>
+                            <option value="">Select department</option>
+                            <option th:each="d : ${departments}" th:value="${d.department_id}" th:text="${d.department_name}">Department</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Catalog Status</label>
+                        <select name="active" id="active" class="form-control">
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="hint-box">
+                    Editing a course changes the shared catalog record. If it is already used by curricula or schedules, prefer careful edits and use deactivate instead of deleting.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeCourseModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="ti ti-device-floppy" aria-hidden="true"></i> Save Course
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openCourseModal(button) {
+        const modal = document.getElementById('courseModal');
+        const form = document.getElementById('courseForm');
+        form.reset();
+        document.getElementById('courseId').value = '';
+        document.getElementById('courseModalTitle').textContent = 'New Course';
+        document.getElementById('active').value = 'true';
+
+        if (button && button.dataset) {
+            document.getElementById('courseModalTitle').textContent = 'Edit Course';
+            document.getElementById('courseId').value = button.dataset.courseId || '';
+            document.getElementById('courseCode').value = button.dataset.courseCode || '';
+            document.getElementById('courseTitle').value = button.dataset.courseTitle || '';
+            document.getElementById('departmentId').value = button.dataset.departmentId || '';
+            document.getElementById('creditUnits').value = button.dataset.creditUnits || 3;
+            document.getElementById('active').value = button.dataset.active === '0' ? 'false' : 'true';
+        }
+
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+        document.getElementById('courseCode').focus();
+    }
+
+    function closeCourseModal() {
+        const modal = document.getElementById('courseModal');
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeCourseModal();
+    });
+</script>
+</body>
+</html>
