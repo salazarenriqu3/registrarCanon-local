@@ -137,6 +137,9 @@ line_count > 0
 subject_lines is not empty
 snapshot.program_code matches selected admission program
 finalized = true
+handoff.ready_for_admission = true
+handoff.applicant_is_irregular = true
+handoff.blocking_reasons is empty
 snapshot.snapshot_status = FINAL or snapshot.evaluation_finalized_at is not null
 ```
 
@@ -201,7 +204,20 @@ Example response shape:
   ],
   "line_count": 1,
   "ready": true,
-  "finalized": true
+  "finalized": true,
+  "handoff": {
+    "contract_version": "registrar-irregular-pre-reg-v1",
+    "reference_number": "IRREG-TEST-2026-002",
+    "owner_system": "REGISTRAR",
+    "owner_role": "DEAN_FACULTY",
+    "consumer_system": "ADMISSION",
+    "payment_owner": "CASHIER_ENROLLMENT",
+    "student_number_owner": "ADMISSION_CASHIER",
+    "enrollment_type": "IRREGULAR",
+    "applicant_is_irregular": true,
+    "ready_for_admission": true,
+    "blocking_reasons": []
+  }
 }
 ```
 

@@ -167,9 +167,12 @@ public class ApplicantPreRegSnapshotService {
         out.put("snapshot", header);
         out.put("subject_lines", lines);
         out.put("line_count", lines.size());
+        Map<String, Object> applicant = findApplicantByReference(refNo);
+        boolean irregularApplicant = isIrregularApplicant(applicant);
         boolean finalized = header != null && isFinalized(header);
         out.put("finalized", finalized);
-        out.put("ready", finalized && lines.size() > 0);
+        out.put("ready", irregularApplicant && finalized && lines.size() > 0);
+        out.put("handoff", buildHandoffMeta(refNo, applicant, header, lines, finalized));
         return out;
     }
 
@@ -491,6 +494,42 @@ public class ApplicantPreRegSnapshotService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private Map<String, Object> buildHandoffMeta(String refNo,
+                                                 Map<String, Object> applicant,
+                                                 Map<String, Object> header,
+                                                 List<Map<String, Object>> lines,
+                                                 boolean finalized) {
+        boolean irregularApplicant = isIrregularApplicant(applicant);
+        List<String> blockers = new ArrayList<>();
+        if (applicant == null) {
+            blockers.add("Applicant not found.");
+        } else if (!irregularApplicant) {
+            blockers.add("Regular applicants continue through Admission and Cashier, not Registrar irregular handoff.");
+        }
+        if (header == null) {
+            blockers.add("Registrar snapshot header has not been saved.");
+        } else if (!finalized) {
+            blockers.add("Registrar snapshot has not been finalized by Dean / Faculty.");
+        }
+        if (lines == null || lines.isEmpty()) {
+            blockers.add("Registrar snapshot has no subject lines.");
+        }
+
+        Map<String, Object> handoff = new LinkedHashMap<>();
+        handoff.put("contract_version", "registrar-irregular-pre-reg-v1");
+        handoff.put("reference_number", refNo);
+        handoff.put("owner_system", "REGISTRAR");
+        handoff.put("owner_role", "DEAN_FACULTY");
+        handoff.put("consumer_system", "ADMISSION");
+        handoff.put("payment_owner", "CASHIER_ENROLLMENT");
+        handoff.put("student_number_owner", "ADMISSION_CASHIER");
+        handoff.put("enrollment_type", "IRREGULAR");
+        handoff.put("applicant_is_irregular", irregularApplicant);
+        handoff.put("ready_for_admission", irregularApplicant && finalized && lines != null && !lines.isEmpty());
+        handoff.put("blocking_reasons", blockers);
+        return handoff;
     }
 
     private Long findSnapshotId(String refNo) {
