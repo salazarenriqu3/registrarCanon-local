@@ -22,10 +22,11 @@ Registrar now protects against duplicate student creation: if a student number a
 1. Applicant is identified as irregular/transferee from prior-school fields, admission classification, or Year 2+ entry.
 2. Faculty/Dean opens Registrar: `/registrar/faculty/irregular-advising?refNo={reference_number}`.
 3. Faculty/Dean saves the snapshot header with program, year, semester, fee header fields, and notes.
-4. Faculty/Dean adds one or more subject lines from the active curriculum.
-5. Faculty/Dean finalizes the snapshot.
-6. Admission/Admin opens `/registrar/admin/admission-acceptance?refNo={reference_number}`.
-7. Registrar handoff readiness is allowed only after the shared snapshot has at least one subject line, is finalized, and the snapshot program matches the selected admission program.
+4. Faculty/Dean records TOR-credited curriculum subjects, when applicable.
+5. Faculty/Dean adds one or more subject lines from the active curriculum for the applicant to take.
+6. Faculty/Dean finalizes the snapshot.
+7. Admission/Admin opens `/registrar/admin/admission-acceptance?refNo={reference_number}`.
+8. Registrar handoff readiness is allowed only after the shared snapshot has at least one subject line, is finalized, and the snapshot program matches the selected admission program.
 
 ## Role Split
 
@@ -81,6 +82,7 @@ Registrar creates and writes these tables if missing:
 ```text
 applicant_pre_reg_snapshots
 applicant_pre_reg_subject_lines
+applicant_pre_reg_credit_lines
 ```
 
 Important snapshot fields:
@@ -123,6 +125,25 @@ year_level
 semester_number
 section_code
 sort_order
+created_at
+```
+
+Important TOR credit-line fields:
+
+```text
+credit_id
+snapshot_id
+reference_number
+course_id
+course_code
+course_title
+units
+source_school
+source_course_code
+source_course_title
+credited_units
+remarks
+created_by
 created_at
 ```
 
@@ -202,7 +223,23 @@ Example response shape:
       "sort_order": 1
     }
   ],
+  "credited_lines": [
+    {
+      "credit_id": 1,
+      "course_id": 101,
+      "course_code": "MATH 11",
+      "course_title": "College Algebra",
+      "units": 3.00,
+      "source_school": "Previous College",
+      "source_course_code": "MATH101",
+      "source_course_title": "College Algebra",
+      "credited_units": 3.00,
+      "remarks": "TOR equivalent accepted by Dean",
+      "created_by": "prof"
+    }
+  ],
   "line_count": 1,
+  "credit_count": 1,
   "ready": true,
   "finalized": true,
   "handoff": {

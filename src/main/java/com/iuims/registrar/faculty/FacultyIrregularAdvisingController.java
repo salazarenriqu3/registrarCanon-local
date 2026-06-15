@@ -52,7 +52,9 @@ public class FacultyIrregularAdvisingController {
                     Map<String, Object> workspace = preRegSnapshotService.buildWorkspace(app);
                     model.addAttribute("preRegSnapshot", workspace.get("snapshot"));
                     model.addAttribute("preRegLines", workspace.get("lines"));
+                    model.addAttribute("preRegCreditLines", workspace.get("credits"));
                     model.addAttribute("preRegLineCount", workspace.get("lineCount"));
+                    model.addAttribute("preRegCreditCount", workspace.get("creditCount"));
                     model.addAttribute("preRegReady", workspace.get("ready"));
                     model.addAttribute("preRegFinalized", workspace.get("finalized"));
                     model.addAttribute("preRegCourseOptions", workspace.get("courseOptions"));
@@ -81,6 +83,42 @@ public class FacultyIrregularAdvisingController {
         String message = preRegSnapshotService.upsertSnapshotHeader(
             refNo, programCode, yearLevel, semesterNumber, tuitionAmount, miscAmount, assessmentAmount, notes, currentUsername(session));
         if (message.startsWith("Irregular pre-registration header saved")) {
+            redirectAttributes.addFlashAttribute("successMessage", message);
+        } else {
+            redirectAttributes.addFlashAttribute("message", message);
+        }
+        return "redirect:/faculty/irregular-advising?refNo=" + refNo;
+    }
+
+    @PostMapping("/pre-reg/add-credit")
+    public String addTorCredit(@RequestParam String refNo,
+                               @RequestParam(required = false) Integer courseId,
+                               @RequestParam(required = false) String sourceSchool,
+                               @RequestParam(required = false) String sourceCourseCode,
+                               @RequestParam(required = false) String sourceCourseTitle,
+                               @RequestParam(required = false) Double creditedUnits,
+                               @RequestParam(required = false) String remarks,
+                               HttpSession session,
+                               RedirectAttributes redirectAttributes) {
+        if (!isAdviserUser(session)) return "redirect:/login";
+        String message = preRegSnapshotService.addCreditLine(
+            refNo, courseId, sourceSchool, sourceCourseCode, sourceCourseTitle, creditedUnits, remarks, currentUsername(session));
+        if (message.startsWith("TOR credit line added")) {
+            redirectAttributes.addFlashAttribute("successMessage", message);
+        } else {
+            redirectAttributes.addFlashAttribute("message", message);
+        }
+        return "redirect:/faculty/irregular-advising?refNo=" + refNo;
+    }
+
+    @PostMapping("/pre-reg/remove-credit")
+    public String removeTorCredit(@RequestParam String refNo,
+                                  @RequestParam Long creditId,
+                                  HttpSession session,
+                                  RedirectAttributes redirectAttributes) {
+        if (!isAdviserUser(session)) return "redirect:/login";
+        String message = preRegSnapshotService.removeCreditLine(refNo, creditId);
+        if (message.startsWith("TOR credit line removed")) {
             redirectAttributes.addFlashAttribute("successMessage", message);
         } else {
             redirectAttributes.addFlashAttribute("message", message);

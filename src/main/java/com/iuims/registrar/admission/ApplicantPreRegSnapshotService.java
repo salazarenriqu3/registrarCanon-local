@@ -82,6 +82,28 @@ public class ApplicantPreRegSnapshotService {
                 "   REFERENCES applicant_pre_reg_snapshots(snapshot_id) ON DELETE CASCADE" +
             ")"
         );
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS applicant_pre_reg_credit_lines (" +
+                " credit_id BIGINT AUTO_INCREMENT PRIMARY KEY," +
+                " snapshot_id BIGINT NOT NULL," +
+                " reference_number VARCHAR(50) NOT NULL," +
+                " course_id INT NOT NULL," +
+                " course_code VARCHAR(50) NOT NULL," +
+                " course_title VARCHAR(255) NOT NULL," +
+                " units DECIMAL(10,2) NOT NULL DEFAULT 0.00," +
+                " source_school VARCHAR(255) NULL," +
+                " source_course_code VARCHAR(100) NULL," +
+                " source_course_title VARCHAR(255) NULL," +
+                " credited_units DECIMAL(10,2) NOT NULL DEFAULT 0.00," +
+                " remarks TEXT NULL," +
+                " created_by VARCHAR(64) NULL," +
+                " created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+                " KEY idx_pre_reg_credit_snapshot (snapshot_id)," +
+                " KEY idx_pre_reg_credit_reference (reference_number)," +
+                " CONSTRAINT fk_pre_reg_credit_snapshot FOREIGN KEY (snapshot_id) " +
+                "   REFERENCES applicant_pre_reg_snapshots(snapshot_id) ON DELETE CASCADE" +
+            ")"
+        );
         ensureLineColumn("section_id", "INT NULL");
         ensureLineColumn("schedule_text", "VARCHAR(500) NULL");
         ensureLineColumn("tuition_amount", "DECIMAL(12,2) NOT NULL DEFAULT 0.00");
@@ -140,12 +162,15 @@ public class ApplicantPreRegSnapshotService {
         }
 
         List<Map<String, Object>> lines = listSnapshotLines(refNo);
+        List<Map<String, Object>> credits = listCreditLines(refNo);
         String programCode = asText(snapshot.get("program_code"));
         boolean finalized = isFinalized(snapshot);
 
         workspace.put("snapshot", snapshot);
         workspace.put("lines", lines);
+        workspace.put("credits", credits);
         workspace.put("lineCount", lines.size());
+        workspace.put("creditCount", credits.size());
         workspace.put("finalized", finalized);
         workspace.put("ready", finalized && lines.size() > 0);
         workspace.put("courseOptions", hasText(programCode) ? listProgramCurriculumCourses(programCode) : List.of());
@@ -161,12 +186,15 @@ public class ApplicantPreRegSnapshotService {
             header = findSnapshotHeader(refNo);
         }
         List<Map<String, Object>> lines = listSnapshotLines(refNo);
+        List<Map<String, Object>> credits = listCreditLines(refNo);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("exists", header != null);
         out.put("reference_number", refNo);
         out.put("snapshot", header);
         out.put("subject_lines", lines);
+        out.put("credited_lines", credits);
         out.put("line_count", lines.size());
+        out.put("credit_count", credits.size());
         Map<String, Object> applicant = findApplicantByReference(refNo);
         boolean irregularApplicant = isIrregularApplicant(applicant);
         boolean finalized = header != null && isFinalized(header);
@@ -301,6 +329,13 @@ public class ApplicantPreRegSnapshotService {
         if (dup != null && dup > 0) {
             return "This course is already in the irregular pre-registration list.";
         }
+        Integer credited = db.queryForObject(
+            "SELECT COUNT(*) FROM applicant_pre_reg_credit_lines WHERE snapshot_id = ? AND course_id = ?",
+            Integer.class, snapshotId, courseId
+        );
+        if (credited != null && credited > 0) {
+            return "This course is already marked as TOR-credited. Remove the credit line before adding it to the take list.";
+        }
 
         Integer nextSort = db.queryForObject(
             "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM applicant_pre_reg_subject_lines WHERE snapshot_id = ?",
@@ -327,6 +362,111 @@ public class ApplicantPreRegSnapshotService {
 
         refreshSnapshotTotals(refNo);
         return "Subject added to irregular pre-registration.";
+    }
+
+    public String addCreditLine(String refNo,
+                                Integer courseId,
+                                String sourceSchool,
+                                String sourceCourseCode,
+                                String sourceCourseTitle,
+                                Double creditedUnits,
+                                String remarks,
+                                String actor) {
+        ensureSchema();
+        if (!hasText(refNo)) {
+            return "Applicant reference number is required.";
+        }
+        String applicantBlock = validateApplicantEligibleForRegistrarSnapshot(refNo);
+        if (applicantBlock != null) {
+            return applicantBlock;
+        }
+        if (courseId == null || courseId <= 0) {
+            return "Choose the curriculum subject being credited.";
+        }
+
+        Map<String, Object> header = findSnapshotHeader(refNo);
+        if (header == null) {
+            return "Save the irregular pre-registration header first.";
+        }
+        if (isFinalized(header)) {
+            return "Reopen the finalized irregular pre-registration snapshot before editing TOR credits.";
+        }
+
+        String programCode = asText(header.get("program_code"));
+        if (!hasText(programCode)) {
+            return "Snapshot program code is missing.";
+        }
+
+        List<Map<String, Object>> rows = db.queryForList(
+            "SELECT c.course_id, c.course_code, c.course_title, c.credit_units " +
+                "FROM curriculum_courses cc " +
+                "JOIN curriculum_templates ct ON cc.curriculum_id = ct.curriculum_id " +
+                "JOIN programs p ON ct.program_id = p.program_id " +
+                "JOIN courses c ON c.course_id = cc.course_id " +
+                "WHERE p.program_code = ? AND COALESCE(ct.is_active, 0) = 1 AND c.course_id = ? " +
+                "ORDER BY cc.year_level, cc.semester_number, c.course_code LIMIT 1",
+            programCode, courseId
+        );
+        if (rows.isEmpty()) {
+            return "Selected course is not part of the active curriculum for " + programCode + ".";
+        }
+
+        Long snapshotId = findSnapshotId(refNo);
+        Integer duplicateCredit = db.queryForObject(
+            "SELECT COUNT(*) FROM applicant_pre_reg_credit_lines WHERE snapshot_id = ? AND course_id = ?",
+            Integer.class, snapshotId, courseId
+        );
+        if (duplicateCredit != null && duplicateCredit > 0) {
+            return "This course is already marked as TOR-credited.";
+        }
+        Integer enlisted = db.queryForObject(
+            "SELECT COUNT(*) FROM applicant_pre_reg_subject_lines WHERE snapshot_id = ? AND course_id = ?",
+            Integer.class, snapshotId, courseId
+        );
+        if (enlisted != null && enlisted > 0) {
+            return "This course is already in the take list. Remove the subject line before marking it as credited.";
+        }
+
+        Map<String, Object> course = rows.get(0);
+        double curriculumUnits = course.get("credit_units") instanceof Number
+            ? ((Number) course.get("credit_units")).doubleValue()
+            : 0.0;
+        double credited = creditedUnits != null && creditedUnits > 0.0 ? creditedUnits : curriculumUnits;
+        db.update(
+            "INSERT INTO applicant_pre_reg_credit_lines (" +
+                "snapshot_id, reference_number, course_id, course_code, course_title, units, source_school, " +
+                "source_course_code, source_course_title, credited_units, remarks, created_by) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            snapshotId, refNo.trim(), course.get("course_id"), course.get("course_code"), course.get("course_title"),
+            curriculumUnits, trimToNull(sourceSchool), trimToNull(sourceCourseCode), trimToNull(sourceCourseTitle),
+            credited, trimToNull(remarks), hasText(actor) ? actor.trim() : "registrar"
+        );
+        return "TOR credit line added.";
+    }
+
+    public String removeCreditLine(String refNo, Long creditId) {
+        ensureSchema();
+        if (!hasText(refNo)) {
+            return "Applicant reference number is required.";
+        }
+        String applicantBlock = validateApplicantEligibleForRegistrarSnapshot(refNo);
+        if (applicantBlock != null) {
+            return applicantBlock;
+        }
+        if (creditId == null || creditId <= 0) {
+            return "TOR credit line not found.";
+        }
+        Long snapshotId = findSnapshotId(refNo);
+        if (snapshotId != null && isFinalized(snapshotId)) {
+            return "Reopen the finalized irregular pre-registration snapshot before editing TOR credits.";
+        }
+        int deleted = db.update(
+            "DELETE c FROM applicant_pre_reg_credit_lines c " +
+                "JOIN applicant_pre_reg_snapshots s ON s.snapshot_id = c.snapshot_id " +
+                "WHERE c.credit_id = ? AND s.reference_number = ? AND s.snapshot_source = ?",
+            creditId, refNo, SNAPSHOT_SOURCE
+        );
+        return deleted > 0 ? "TOR credit line removed." : "TOR credit line not found.";
     }
 
     public String removeSubjectLine(String refNo, Long lineId) {
@@ -621,6 +761,19 @@ public class ApplicantPreRegSnapshotService {
             }
         }
         return lines;
+    }
+
+    private List<Map<String, Object>> listCreditLines(String refNo) {
+        Long snapshotId = findSnapshotId(refNo);
+        if (snapshotId == null) {
+            return new ArrayList<>();
+        }
+        return db.queryForList(
+            "SELECT credit_id, course_id, course_code, course_title, units, source_school, source_course_code, " +
+                "source_course_title, credited_units, remarks, created_by, created_at " +
+                "FROM applicant_pre_reg_credit_lines WHERE snapshot_id = ? ORDER BY course_code, credit_id",
+            snapshotId
+        );
     }
 
     private List<Map<String, Object>> listProgramCurrentSections(String programCode) {
