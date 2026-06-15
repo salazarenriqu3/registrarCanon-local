@@ -265,6 +265,15 @@ public class ApplicantPreRegSnapshotService {
             return "Selected section is not available for the active curriculum and current term.";
         }
         if (selectedSection != null) {
+            int maxCapacity = selectedSection.get("max_capacity") instanceof Number
+                ? ((Number) selectedSection.get("max_capacity")).intValue()
+                : 0;
+            int enrolledCount = selectedSection.get("enrolled_count") instanceof Number
+                ? ((Number) selectedSection.get("enrolled_count")).intValue()
+                : 0;
+            if (maxCapacity > 0 && enrolledCount >= maxCapacity) {
+                return "Selected section is already full. Choose another section or open an irregular section first.";
+            }
             courseId = ((Number) selectedSection.get("course_id")).intValue();
             sectionCode = asText(selectedSection.get("section_code"));
         }
@@ -627,6 +636,7 @@ public class ApplicantPreRegSnapshotService {
             "JOIN curriculum_templates ct ON ct.curriculum_id = cc.curriculum_id AND COALESCE(ct.is_active, 0) = 1 " +
             "JOIN programs p ON p.program_id = ct.program_id " +
             "WHERE p.program_code = ? " +
+                "AND UPPER(COALESCE(cs.section_status, 'Open')) IN ('OPEN', 'PLANNING') " +
                 (termId != null ? "AND cs.term_id = ? " : "") +
             "ORDER BY c.course_code, cs.section_code",
             termId != null ? new Object[]{programCode.trim(), termId} : new Object[]{programCode.trim()}
@@ -637,7 +647,7 @@ public class ApplicantPreRegSnapshotService {
             row.put("slots_left", Math.max(0, max - enrolled));
             row.put("label", row.get("course_code") + " - " + row.get("course_title") +
                 " | " + row.get("section_code") + " | " + row.get("schedule_text") +
-                " | " + row.get("credit_units") + "u");
+                " | " + row.get("credit_units") + "u | slots: " + row.get("slots_left"));
         }
         return rows;
     }
@@ -646,7 +656,8 @@ public class ApplicantPreRegSnapshotService {
         Integer termId = globalTermService.getCurrentTermId();
         List<Map<String, Object>> rows = db.queryForList(
             "SELECT cs.section_id, cs.course_id, c.course_code, c.course_title, c.credit_units, " +
-                "cc.year_level, cc.semester_number, cs.section_code, " +
+                "cc.year_level, cc.semester_number, cs.section_code, cs.max_capacity, " +
+                "(SELECT COUNT(*) FROM student_enlistments se WHERE se.section_id = cs.section_id) AS enrolled_count, " +
                 scheduleSql("cs.section_id") + " AS schedule_text " +
             "FROM class_sections cs " +
             "JOIN courses c ON c.course_id = cs.course_id " +
@@ -654,6 +665,7 @@ public class ApplicantPreRegSnapshotService {
             "JOIN curriculum_templates ct ON ct.curriculum_id = cc.curriculum_id AND COALESCE(ct.is_active, 0) = 1 " +
             "JOIN programs p ON p.program_id = ct.program_id " +
             "WHERE p.program_code = ? AND cs.section_id = ? " +
+                "AND UPPER(COALESCE(cs.section_status, 'Open')) IN ('OPEN', 'PLANNING') " +
                 (termId != null ? "AND cs.term_id = ? " : "") +
             "LIMIT 1",
             termId != null ? new Object[]{programCode.trim(), sectionId, termId} : new Object[]{programCode.trim(), sectionId}
