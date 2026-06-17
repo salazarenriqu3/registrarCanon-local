@@ -74,21 +74,31 @@ public class StudentCurriculumService {
         }
     }
 
+    public boolean hasCurrentAssignment(String studentNumber) {
+        return findCurrentCurriculumId(studentNumber) != null;
+    }
+
+    public Integer resolveCurrentCurriculum(String studentNumber) {
+        return findCurrentCurriculumId(studentNumber);
+    }
+
+    public Integer requireCurrentCurriculumId(String studentNumber) {
+        Integer curriculumId = findCurrentCurriculumId(studentNumber);
+        if (curriculumId == null) {
+            throw new IllegalStateException("No curriculum assigned for this student.");
+        }
+        return curriculumId;
+    }
+
+    /**
+     * Backward-compatible alias for read-only resolution.
+     *
+     * <p>The old behavior silently created a default curriculum row; that
+     * masked missing assignment data in runtime builder/read paths.
+     */
     @Transactional
     public Integer resolveOrAssignCurrentCurriculum(String studentNumber) {
-        if (studentNumber == null || studentNumber.isBlank()) return null;
-        String sn = studentNumber.trim();
-        Integer current = findCurrentCurriculumId(sn);
-        if (current != null) {
-            return current;
-        }
-        String programCode = findStudentProgramCode(sn);
-        Integer defaultCurriculumId = findDefaultCurriculumId(programCode);
-        if (defaultCurriculumId == null) {
-            return null;
-        }
-        assignCurriculum(sn, defaultCurriculumId, "DEFAULT", "Auto-assigned active curriculum for enrollment.");
-        return defaultCurriculumId;
+        return resolveCurrentCurriculum(studentNumber);
     }
 
     private String findStudentProgramCode(String studentNumber) {
@@ -244,7 +254,7 @@ public class StudentCurriculumService {
     public List<Map<String, Object>> listOrphanPassedCredits(String studentNumber) {
         if (studentNumber == null || studentNumber.isBlank()) return List.of();
         String sn = studentNumber.trim();
-        Integer curriculumId = resolveOrAssignCurrentCurriculum(sn);
+        Integer curriculumId = resolveCurrentCurriculum(sn);
         if (curriculumId == null) return List.of();
         try {
             List<Object> keys = gradeLookupKeys(sn);
@@ -290,7 +300,7 @@ public class StudentCurriculumService {
     public List<Map<String, Object>> listCurriculumDeficiencies(String studentNumber) {
         if (studentNumber == null || studentNumber.isBlank()) return List.of();
         String sn = studentNumber.trim();
-        Integer curriculumId = resolveOrAssignCurrentCurriculum(sn);
+        Integer curriculumId = resolveCurrentCurriculum(sn);
         if (curriculumId == null) return List.of();
         try {
             List<Object> keys = gradeLookupKeys(sn);
@@ -341,7 +351,7 @@ public class StudentCurriculumService {
     private List<Map<String, Object>> listCurriculumGradeRows(String studentNumber, boolean passedOnly) {
         if (studentNumber == null || studentNumber.isBlank()) return List.of();
         String sn = studentNumber.trim();
-        Integer curriculumId = resolveOrAssignCurrentCurriculum(sn);
+        Integer curriculumId = resolveCurrentCurriculum(sn);
         if (curriculumId == null) return List.of();
         try {
             List<Object> keys = gradeLookupKeys(sn);

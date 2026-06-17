@@ -133,7 +133,7 @@ public class CreditGradeService {
 
     private String creditCourseInternal(String sn, int courseId, String courseCode,
                                         Double numericGrade, String sourceSchool, String note) {
-        Integer curriculumId = studentCurriculumService.resolveOrAssignCurrentCurriculum(sn);
+        Integer curriculumId = studentCurriculumService.findCurrentCurriculumId(sn);
         if (curriculumId == null) {
             return "ERROR: No curriculum assigned for this student.";
         }

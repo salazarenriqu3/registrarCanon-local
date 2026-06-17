@@ -134,10 +134,10 @@ public class BlockOfferingService {
 
         Integer resolvedCurriculumId = curriculumId;
         if (resolvedCurriculumId == null || resolvedCurriculumId <= 0) {
-            resolvedCurriculumId = resolveActiveCurriculumId(program);
+            return "ERROR: Choose a curriculum for this block.";
         }
-        if (resolvedCurriculumId == null) {
-            return "ERROR: No active curriculum found for " + program + ".";
+        if (!curriculumBelongsToProgram(resolvedCurriculumId, program)) {
+            return "ERROR: Selected curriculum does not belong to " + program + ".";
         }
 
         Integer existing = null;
@@ -173,12 +173,16 @@ public class BlockOfferingService {
     @Transactional
     public String rematerializeBlock(int blockId) {
         ensureSchema();
-        MaterializeResult result = materializeBlockCourses(blockId);
+        try {
+            MaterializeResult result = materializeBlockCourses(blockId);
         return "SUCCESS: Refreshed block — created " + result.created + ", linked " + result.linked
             + ", skipped " + result.skipped + ".";
+        } catch (IllegalStateException e) {
+            return "ERROR: " + e.getMessage();
+        }
     }
 
-    /** Link legacy block-coded sections and ensure block_offerings rows exist. */
+    /** Link legacy block-coded sections only when an explicit block row already exists. */
     @Transactional
     public void syncLegacyBlockLinks(int termId) {
         ensureSchema();
@@ -190,31 +194,23 @@ public class BlockOfferingService {
             String code = String.valueOf(row.get("section_code"));
             ParsedBlock parsed = parseBlockCode(code);
             if (parsed == null) continue;
-            Integer blockId = ensureBlockRow(parsed, termId, 40);
+            Integer blockId = findExistingBlockRow(parsed, termId);
+            if (blockId == null) continue;
             db.update(
                 "UPDATE class_sections SET block_id = ? WHERE term_id = ? AND section_code = ? AND block_id IS NULL",
                 blockId, termId, code);
         }
     }
 
-    private Integer ensureBlockRow(ParsedBlock parsed, int termId, int maxCapacity) {
-        Integer blockId = null;
+    private Integer findExistingBlockRow(ParsedBlock parsed, int termId) {
         try {
-            blockId = db.queryForObject(
+            return db.queryForObject(
                 "SELECT block_id FROM block_offerings WHERE term_id = ? AND program_code = ? " +
                 "AND year_level = ? AND semester_number = ? AND section_group = ?",
                 Integer.class, termId, parsed.programCode, parsed.yearLevel, parsed.semesterNumber, parsed.sectionGroup);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            return null;
         }
-        if (blockId != null) return blockId;
-
-        Integer curriculumId = resolveActiveCurriculumId(parsed.programCode);
-        db.update(
-            "INSERT INTO block_offerings (term_id, program_code, year_level, semester_number, section_group, " +
-            "max_capacity, curriculum_id, block_status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Open')",
-            termId, parsed.programCode, parsed.yearLevel, parsed.semesterNumber, parsed.sectionGroup,
-            maxCapacity, curriculumId);
-        return db.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
     }
 
     private MaterializeResult materializeBlockCourses(int blockId) {
@@ -231,7 +227,7 @@ public class BlockOfferingService {
         Integer facultyId = block.get("faculty_id") instanceof Number n ? n.intValue() : null;
         Integer curriculumId = block.get("curriculum_id") instanceof Number n ? n.intValue() : null;
         if (curriculumId == null) {
-            curriculumId = resolveActiveCurriculumId(String.valueOf(block.get("program_code")));
+            throw new IllegalStateException("Block has no curriculum assigned. Create or update it with an explicit curriculum.");
         }
 
         List<Map<String, Object>> courses = db.queryForList(
@@ -269,16 +265,17 @@ public class BlockOfferingService {
         return new MaterializeResult(created, linked, skipped);
     }
 
-    private Integer resolveActiveCurriculumId(String programCode) {
+    private boolean curriculumBelongsToProgram(Integer curriculumId, String programCode) {
+        if (curriculumId == null || programCode == null || programCode.isBlank()) return false;
         try {
-            return db.queryForObject(
-                "SELECT ct.curriculum_id FROM curriculum_templates ct " +
+            Integer count = db.queryForObject(
+                "SELECT COUNT(*) FROM curriculum_templates ct " +
                 "JOIN programs p ON p.program_id = ct.program_id " +
-                "WHERE p.program_code = ? AND COALESCE(ct.is_active, 0) = 1 " +
-                "ORDER BY ct.version_number DESC, ct.curriculum_id DESC LIMIT 1",
-                Integer.class, programCode);
+                "WHERE ct.curriculum_id = ? AND p.program_code COLLATE " + DB_COLLATE + " = ? COLLATE " + DB_COLLATE,
+                Integer.class, curriculumId, programCode.trim().toUpperCase());
+            return count != null && count > 0;
         } catch (Exception e) {
-            return null;
+            return false;
         }
     }
 

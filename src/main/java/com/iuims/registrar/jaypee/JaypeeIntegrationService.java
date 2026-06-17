@@ -244,7 +244,10 @@ public class JaypeeIntegrationService {
             Map<String, Object> userInfo = db.queryForMap(
                 "SELECT program_code, year_level, semester FROM students WHERE student_number = ?", studentNumber);
             String programCode = (String) userInfo.get("program_code");
-            Integer assignedCurriculumId = studentCurriculumService.resolveOrAssignCurrentCurriculum(studentNumber);
+            Integer assignedCurriculumId = studentCurriculumService.findCurrentCurriculumId(studentNumber);
+            if (assignedCurriculumId == null) {
+                return new ArrayList<>();
+            }
             int stuYear = userInfo.get("year_level") != null ? ((Number) userInfo.get("year_level")).intValue() : 1;
             int stuSem = userInfo.get("semester") != null ? ((Number) userInfo.get("semester")).intValue() : 1;
 
@@ -258,9 +261,7 @@ public class JaypeeIntegrationService {
 
             String sql;
             List<Map<String, Object>> classes;
-            String curriculumJoin = assignedCurriculumId != null
-                ? "JOIN curriculum_templates ct ON cc.curriculum_id = ct.curriculum_id AND ct.curriculum_id = ? "
-                : "JOIN curriculum_templates ct ON cc.curriculum_id = ct.curriculum_id AND ct.is_active = 1 ";
+            String curriculumJoin = "JOIN curriculum_templates ct ON cc.curriculum_id = ct.curriculum_id AND ct.curriculum_id = ? ";
 
             if (isBlockEnroll) {
                 // Pick ONE section per course (lowest section_id) — mirrors EnrollmentIntegrationService block-enroll logic.
@@ -579,7 +580,10 @@ public class JaypeeIntegrationService {
             Map<String, Object> userInfo = db.queryForMap(
                 "SELECT program_code, year_level, semester FROM students WHERE student_number = ?", studentNumber);
             String programCode = (String) userInfo.get("program_code");
-            Integer assignedCurriculumId = studentCurriculumService.resolveOrAssignCurrentCurriculum(studentNumber);
+            Integer assignedCurriculumId = studentCurriculumService.findCurrentCurriculumId(studentNumber);
+            if (assignedCurriculumId == null) {
+                return new ArrayList<>();
+            }
             int stuYear = userInfo.get("year_level") != null ? ((Number) userInfo.get("year_level")).intValue() : 1;
             int stuSem  = userInfo.get("semester")   != null ? ((Number) userInfo.get("semester")).intValue()   : 1;
             String school = normalizeOfferingFilter(schoolName);
@@ -633,7 +637,7 @@ public class JaypeeIntegrationService {
                 where.append(" AND ct.curriculum_id = ? ");
                 courseParams.add(curriculumFilterId);
             } else {
-                where.append(" AND ct.is_active = 1 ");
+                where.append(" AND 1 = 0 ");
             }
 
             List<Map<String, Object>> courses = db.queryForList(

@@ -67,17 +67,16 @@ class StudentCurriculumServiceTest {
     }
 
     @Test
-    void resolveOrAssignUsesProgramDefaultOnlyWhenStudentHasNoAssignment() {
+    void resolveOrAssignDoesNotCreateImplicitAssignmentWhenStudentHasNoAssignment() {
         seedProgramWithTwoCurricula();
         db.update("INSERT INTO students (student_number, program_code) VALUES ('2026-0001', 'BSIT')");
 
         Integer curriculumId = service.resolveOrAssignCurrentCurriculum("2026-0001");
 
-        assertThat(curriculumId).isEqualTo(2);
+        assertThat(curriculumId).isNull();
         assertThat(db.queryForObject(
-            "SELECT COUNT(*) FROM student_curriculum_assignments WHERE student_number = '2026-0001' " +
-                "AND curriculum_id = 2 AND assignment_type = 'LEGACY_BACKFILL' AND is_current = 1",
-            Integer.class)).isEqualTo(1);
+            "SELECT COUNT(*) FROM student_curriculum_assignments WHERE student_number = '2026-0001'",
+            Integer.class)).isZero();
     }
 
     @Test

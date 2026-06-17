@@ -35,12 +35,15 @@ public class AcademicController {
     private final AcademicGradingService academicService;
     private final TermFeeAdminService termFeeAdminService;
     private final BlockOfferingService blockOfferingService;
+    private final StudentCurriculumService studentCurriculumService;
 
     public AcademicController(AcademicGradingService academicService, TermFeeAdminService termFeeAdminService,
-                              BlockOfferingService blockOfferingService) {
+                              BlockOfferingService blockOfferingService,
+                              StudentCurriculumService studentCurriculumService) {
         this.academicService = academicService;
         this.termFeeAdminService = termFeeAdminService;
         this.blockOfferingService = blockOfferingService;
+        this.studentCurriculumService = studentCurriculumService;
     }
 
 
@@ -49,6 +52,10 @@ public class AcademicController {
         Map<String,Object> u = (Map<String,Object>) s.getAttribute("currentUser");
         if(u == null) return "redirect:/login";
         m.addAttribute("classes", academicService.getFacultyClassesForUser(u));
+        m.addAttribute("user", u);
+        m.addAttribute("canOpenDeanAdvising", false);
+        m.addAttribute("deanAdvisingDormant", true);
+        m.addAttribute("deanAdvisingNotice", "Dean irregular advising is currently dormant and outside the registrar scope.");
         return "grades_menu";
     }
     
@@ -312,6 +319,7 @@ public class AcademicController {
     public String classScheduling(
             @RequestParam(defaultValue = "0") int termId,
             @RequestParam(required = false) String dept,
+            @RequestParam(defaultValue = "overview") String view,
             @RequestParam(required = false) String msg,
             Model model, HttpSession s) {
         if (s.getAttribute("currentUser") == null) return "redirect:/login";
@@ -320,17 +328,25 @@ public class AcademicController {
         blockOfferingService.syncLegacyBlockLinks(termId);
         var blocks = blockOfferingService.listBlocksForTerm(termId);
         var blockCourses = new java.util.LinkedHashMap<Integer, List<Map<String, Object>>>();
-        for (Map<String, Object> block : blocks) {
-            int blockId = ((Number) block.get("block_id")).intValue();
-            blockCourses.put(blockId, blockOfferingService.listBlockCourses(blockId));
+        boolean loadBlockDetails = "blocks".equalsIgnoreCase(view) || "all".equalsIgnoreCase(view);
+        boolean loadCourseSections = "courses".equalsIgnoreCase(view) || "all".equalsIgnoreCase(view);
+        if (loadBlockDetails) {
+            for (Map<String, Object> block : blocks) {
+                int blockId = ((Number) block.get("block_id")).intValue();
+                blockCourses.put(blockId, blockOfferingService.listBlockCourses(blockId));
+            }
         }
         model.addAttribute("termId",   termId);
         model.addAttribute("deptFilter", dept);
+        model.addAttribute("selectedSchedulingView", view);
+        model.addAttribute("loadBlockDetails", loadBlockDetails);
+        model.addAttribute("loadCourseSections", loadCourseSections);
         model.addAttribute("terms",    academicService.getAllTerms());
         model.addAttribute("blocks",   blocks);
         model.addAttribute("blockCourses", blockCourses);
         model.addAttribute("programs", blockOfferingService.listPrograms());
-        model.addAttribute("courses",  academicService.getCoursesWithSections(termId));
+        model.addAttribute("curricula", studentCurriculumService.listAssignableCurricula());
+        model.addAttribute("courses",  loadCourseSections ? academicService.getCoursesWithSections(termId) : java.util.List.of());
         model.addAttribute("faculty",  academicService.getAllFacultyForScheduling());
         model.addAttribute("rooms",    academicService.getAllRoomsForScheduling());
         if (msg != null) model.addAttribute("msg", msg);
@@ -398,6 +414,3 @@ public class AcademicController {
         return "redirect:/admin/class-scheduling?termId=" + termId;
     }
 }
-
-
-

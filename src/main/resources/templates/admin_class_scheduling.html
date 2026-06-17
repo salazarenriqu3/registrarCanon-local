@@ -144,9 +144,15 @@
                 <button type="button" class="btn btn-outline" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="scrollToPanel('blocks')">
                     <i class="ti ti-layout-grid"></i> Block Sections
                 </button>
+                <a th:href="@{/admin/class-scheduling(termId=${termId}, view='blocks')}" class="btn btn-outline" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+                    <i class="ti ti-list-details"></i> Load Block Details
+                </a>
                 <button type="button" class="btn btn-outline" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="scrollToPanel('courses')">
                     <i class="ti ti-books"></i> Course Sections
                 </button>
+                <a th:href="@{/admin/class-scheduling(termId=${termId}, view='courses')}" class="btn btn-outline" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+                    <i class="ti ti-table"></i> Load Course Details
+                </a>
                 <button type="button" id="collapseBlocksBtn" class="btn btn-outline" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="toggleSchedulingPanel('blocks')">
                     <i class="ti ti-chevrons-up"></i> <span id="collapseBlocksBtnLabel">Collapse Blocks</span>
                 </button>
@@ -169,7 +175,7 @@
                         </p>
                     </div>
                     <div style="display: flex; gap: 0.5rem; align-items: center;" onclick="event.stopPropagation()">
-                        <button type="button" class="btn btn-primary" style="padding: 0.45rem 1rem; font-size: 0.85rem;" onclick="document.getElementById('createBlockModal').classList.add('show')">
+                        <button type="button" class="btn btn-primary" style="padding: 0.45rem 1rem; font-size: 0.85rem;" onclick="openCreateBlockModal()">
                             <i class="ti ti-plus" aria-hidden="true"></i> Create Block
                         </button>
                         <button type="button" id="blocksPanelToggle" class="btn btn-outline" style="padding: 0.45rem 0.75rem; font-size: 0.85rem;" onclick="event.stopPropagation(); toggleSchedulingPanel('blocks')" title="Collapse or expand this panel">
@@ -208,7 +214,10 @@
                                 </div>
                             </div>
                             <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                <button type="button" class="btn btn-outline" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;"
+                                <a th:if="${!loadBlockDetails}" th:href="@{/admin/class-scheduling(termId=${termId}, view='blocks')}" class="btn btn-outline" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+                                    <i class="ti ti-list-details" aria-hidden="true"></i> Load Courses
+                                </a>
+                                <button th:if="${loadBlockDetails}" type="button" class="btn btn-outline" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;"
                                         th:attr="onclick=|toggleBlock(${b.block_id})|">
                                     <i class="ti ti-list-details" aria-hidden="true"></i> Courses
                                 </button>
@@ -222,7 +231,7 @@
                                 </form>
                             </div>
                         </div>
-                        <div th:id="'block-panel-' + ${b.block_id}" style="display: none; margin-top: 1rem; border-top: 1px dashed var(--border-color); padding-top: 1rem;">
+                        <div th:if="${loadBlockDetails}" th:id="'block-panel-' + ${b.block_id}" style="display: none; margin-top: 1rem; border-top: 1px dashed var(--border-color); padding-top: 1rem;">
                             <input type="text" class="form-control block-course-search" style="max-width: 280px; margin-bottom: 0.75rem; font-size: 0.85rem;"
                                    th:attr="data-block-id=${b.block_id}" placeholder="Filter courses in this block..." oninput="filterBlockCourses(this)">
                             <div style="overflow-x: auto;">
@@ -307,6 +316,12 @@
                     </button>
                 </div>
                 <div id="courseSectionsBody" class="sched-panel-body">
+            <div th:if="${!loadCourseSections}" style="padding: 1.25rem 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
+                Course section details are not loaded by default to keep this builder responsive.
+                <a th:href="@{/admin/class-scheduling(termId=${termId}, view='courses')}" style="font-weight: 700; color: var(--primary-color);">Load Course Details</a>
+                when you need per-course irregular sections, faculty assignment, or schedule-slot editing.
+            </div>
+            <th:block th:if="${loadCourseSections}">
 
             <!-- Filter + Search bar -->
             <div class="card" style="margin-bottom: 1.5rem; display: flex; flex-direction: row; align-items: center; gap: 1rem; padding: 1rem;">
@@ -447,6 +462,7 @@
                     </table>
                 </div>
             </div>
+            </th:block>
                 </div>
             </div>
         </div>
@@ -518,7 +534,7 @@
                 <input type="hidden" name="termId" th:value="${termId}">
                 <div style="margin-bottom: 1.25rem;">
                     <label class="form-label">Program <span style="color: var(--danger-color);">*</span></label>
-                    <select name="programCode" class="form-control" required>
+                    <select name="programCode" id="createBlockProgram" class="form-control" required onchange="syncCreateBlockCurricula()">
                         <option value="">— Select program —</option>
                         <option th:each="p : ${programs}" th:value="${p.program_code}"
                                 th:text="${p.program_code + ' — ' + p.program_name}"></option>
@@ -559,9 +575,16 @@
                         </select>
                     </div>
                 </div>
-                <input type="hidden" name="curriculumId" value="0">
+                <div style="margin-top: 1rem;">
+                    <label class="form-label">Curriculum <span style="color: var(--danger-color);">*</span></label>
+                    <select name="curriculumId" id="createBlockCurriculum" class="form-control" required>
+                        <option value="">— Select curriculum —</option>
+                        <option th:each="c : ${curricula}" th:value="${c.curriculum_id}" th:attr="data-program=${c.program_code}"
+                                th:text="${c.program_code + ' — ' + c.curriculum_name + ' (v' + c.version_number + (c.is_active == 1 ? ', active' : ', historical') + ')'}"></option>
+                    </select>
+                </div>
                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem;">
-                    Active curriculum for the program is used automatically. All courses for the selected year/semester are materialized as <code>class_sections</code> rows sharing one section code.
+                    The selected curriculum is used directly. All courses for the selected year/semester are materialized as <code>class_sections</code> rows sharing one section code.
                 </div>
             </div>
             <div class="modal-footer">
@@ -810,6 +833,27 @@ function jumpToCourse(button) {
 }
 
 // Modal helpers
+function openCreateBlockModal() {
+    syncCreateBlockCurricula();
+    document.getElementById('createBlockModal').classList.add('show');
+}
+
+function syncCreateBlockCurricula() {
+    const program = document.getElementById('createBlockProgram');
+    const curriculum = document.getElementById('createBlockCurriculum');
+    if (!program || !curriculum) return;
+    const selectedProgram = (program.value || '').toUpperCase();
+    let selectedStillValid = false;
+    Array.from(curriculum.options).forEach(option => {
+        const optionProgram = (option.getAttribute('data-program') || '').toUpperCase();
+        const visible = !option.value || !selectedProgram || optionProgram === selectedProgram;
+        option.hidden = !visible;
+        option.disabled = !visible;
+        if (option.selected && visible) selectedStillValid = true;
+    });
+    if (!selectedStillValid) curriculum.value = '';
+}
+
 function openSectionModal(cid, label, tid) {
     document.getElementById('os_courseId').value = cid;
     document.getElementById('os_termId').value   = tid;
@@ -850,8 +894,12 @@ function collapseAll(){
 
 // Filter / Search
 function filterCourses() {
-    const q    = document.getElementById('courseSearch').value.toLowerCase();
-    const dept = document.getElementById('deptSelect').value;
+    const search = document.getElementById('courseSearch');
+    const deptSelect = document.getElementById('deptSelect');
+    const count = document.getElementById('visibleCount');
+    if (!search || !deptSelect) return;
+    const q    = search.value.toLowerCase();
+    const dept = deptSelect.value;
     let vis = 0;
     document.querySelectorAll('tr.course-row').forEach(row => {
         const cid = row.getAttribute('data-course-id');
@@ -868,14 +916,16 @@ function filterCourses() {
         if (panel) panel.style.display = 'none';
         if (match) vis++;
     });
-    document.getElementById('visibleCount').textContent = vis + ' course(s) shown';
+    if (count) count.textContent = vis + ' course(s) shown';
 }
 
 // Build dept filter dropdown from rows
 document.addEventListener('DOMContentLoaded', () => {
     const sel = document.getElementById('deptSelect');
-    const depts = [...new Set([...document.querySelectorAll('tr.course-row')].map(r => r.getAttribute('data-dept')))].sort();
-    depts.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; sel.appendChild(o); });
+    if (sel) {
+        const depts = [...new Set([...document.querySelectorAll('tr.course-row')].map(r => r.getAttribute('data-dept')))].sort();
+        depts.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; sel.appendChild(o); });
+    }
     filterCourses();
     filterBlocks();
     applyPanelState();

@@ -659,20 +659,12 @@ public class ScholarEnrollmentService {
     public double getMaxAllowedUnitsForStudent(String studentNumber, String programCode, int studentYearLevel) {
         double max = readEnrollmentSettingInt("max_units_regular", 24);
         try {
-            Integer curriculumId = studentCurriculumService.resolveOrAssignCurrentCurriculum(studentNumber);
+            Integer curriculumId = studentCurriculumService.findCurrentCurriculumId(studentNumber);
             Integer maxYear = curriculumId != null
                 ? db.queryForObject(
                     "SELECT MAX(year_level) FROM curriculum_courses WHERE curriculum_id = ?",
                     Integer.class, curriculumId)
                 : null;
-            if (maxYear == null) {
-                maxYear = db.queryForObject(
-                    "SELECT MAX(cc.year_level) FROM curriculum_courses cc " +
-                        "JOIN curriculum_templates ct ON cc.curriculum_id = ct.curriculum_id " +
-                        "JOIN programs p ON ct.program_id = p.program_id " +
-                        "WHERE p.program_code = ? AND COALESCE(ct.is_active, 0) = 1",
-                    Integer.class, programCode);
-            }
             if (maxYear != null && studentYearLevel >= maxYear) {
                 max += readEnrollmentSettingInt("max_units_graduating_bonus", 6);
             }
