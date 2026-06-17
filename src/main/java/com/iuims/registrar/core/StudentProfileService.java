@@ -6,9 +6,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringJoiner;
 
 @Service
@@ -136,15 +138,20 @@ public class StudentProfileService {
         tryExecute("ALTER TABLE students ADD COLUMN status VARCHAR(50) DEFAULT 'ACTIVE'");
         tryExecute("ALTER TABLE students ADD COLUMN is_active TINYINT(1) DEFAULT 1");
         tryExecute("ALTER TABLE students ADD COLUMN enrollment_blocked TINYINT(1) DEFAULT 0");
+        ensureSysUserProfileColumns();
     }
 
     public Map<String, Object> getEditableProfile(String studentNumber) {
         ensureSchema();
-        String select = buildProfileSelect();
+        Set<String> applicantColumns = existingColumns("applicants");
+        String select = buildProfileSelect(applicantColumns);
+        String applicantJoin = applicantColumns.isEmpty()
+            ? " "
+            : " LEFT JOIN applicants a ON a.reference_number = s.reference_number ";
         try {
             return db.queryForMap(
                 "SELECT s.student_number, s.reference_number, " + select +
-                    " FROM students s LEFT JOIN applicants a ON a.reference_number = s.reference_number " +
+                    " FROM students s" + applicantJoin +
                     "WHERE s.student_number = ? LIMIT 1",
                 studentNumber);
         } catch (Exception e) {
@@ -195,13 +202,19 @@ public class StudentProfileService {
         }
     }
 
-    private String buildProfileSelect() {
+    private String buildProfileSelect(Set<String> applicantColumns) {
         StringJoiner joiner = new StringJoiner(", ");
         for (String field : EDITABLE_FIELDS.keySet()) {
             if ("real_name".equals(field)) {
-                joiner.add("COALESCE(NULLIF(s.real_name, ''), NULLIF(TRIM(CONCAT(COALESCE(a.first_name, ''), ' ', COALESCE(a.middle_name, ''), ' ', COALESCE(a.last_name, ''))), '')) AS real_name");
-            } else {
+                if (applicantColumns.contains("first_name") && applicantColumns.contains("middle_name") && applicantColumns.contains("last_name")) {
+                    joiner.add("COALESCE(NULLIF(s.real_name, ''), NULLIF(TRIM(CONCAT(COALESCE(a.first_name, ''), ' ', COALESCE(a.middle_name, ''), ' ', COALESCE(a.last_name, ''))), '')) AS real_name");
+                } else {
+                    joiner.add("s.real_name AS real_name");
+                }
+            } else if (applicantColumns.contains(field)) {
                 joiner.add("COALESCE(NULLIF(s." + field + ", ''), a." + field + ") AS " + field);
+            } else {
+                joiner.add("s." + field + " AS " + field);
             }
         }
         return joiner.toString();
@@ -229,18 +242,60 @@ public class StudentProfileService {
     }
 
     private void syncSysUser(String studentNumber, Map<String, String> values) {
+        Set<String> sysUserColumns = existingColumns("sys_users");
+        LinkedHashMap<String, String> syncValues = new LinkedHashMap<>();
+        addIfColumnExists(syncValues, sysUserColumns, "real_name", values.get("real_name"));
+        addIfColumnExists(syncValues, sysUserColumns, "email", values.get("email"));
+        addIfColumnExists(syncValues, sysUserColumns, "mobile", values.get("mobile"));
+        addIfColumnExists(syncValues, sysUserColumns, "first_name", values.get("first_name"));
+        addIfColumnExists(syncValues, sysUserColumns, "middle_name", values.get("middle_name"));
+        addIfColumnExists(syncValues, sysUserColumns, "last_name", values.get("last_name"));
+        if (syncValues.isEmpty()) {
+            return;
+        }
+
+        StringJoiner setters = new StringJoiner(", ");
+        List<Object> args = new ArrayList<>();
+        syncValues.forEach((field, value) -> {
+            setters.add(field + " = ?");
+            args.add(value);
+        });
+        args.add(studentNumber);
         try {
             db.update(
-                "UPDATE sys_users SET real_name = ?, email = ? WHERE username = ?",
-                values.get("real_name"), values.get("email"), studentNumber);
+                "UPDATE sys_users SET " + setters + " WHERE username = ?",
+                args.toArray());
         } catch (Exception ignored) {
         }
+    }
+
+    private void addIfColumnExists(Map<String, String> target, Set<String> columns, String field, String value) {
+        if (columns.contains(field)) {
+            target.put(field, value);
+        }
+    }
+
+    private void ensureSysUserProfileColumns() {
+        tryExecute("ALTER TABLE sys_users ADD COLUMN first_name VARCHAR(100) NULL");
+        tryExecute("ALTER TABLE sys_users ADD COLUMN middle_name VARCHAR(100) NULL");
+        tryExecute("ALTER TABLE sys_users ADD COLUMN last_name VARCHAR(100) NULL");
+        tryExecute("ALTER TABLE sys_users ADD COLUMN email VARCHAR(150) NULL");
+        tryExecute("ALTER TABLE sys_users ADD COLUMN mobile VARCHAR(50) NULL");
+        tryExecute("ALTER TABLE sys_users ADD COLUMN term_year VARCHAR(50) NULL");
+        tryExecute("ALTER TABLE sys_users ADD COLUMN student_type VARCHAR(50) NULL");
+        tryExecute("ALTER TABLE sys_users ADD COLUMN enrollment_status_type VARCHAR(50) NULL");
+    }
+
+    private Set<String> existingColumns(String tableName) {
+        Set<String> columns = new HashSet<>();
         try {
-            db.update(
-                "UPDATE sys_users SET first_name = ?, middle_name = ?, last_name = ? WHERE username = ?",
-                values.get("first_name"), values.get("middle_name"), values.get("last_name"), studentNumber);
+            db.queryForList(
+                "SELECT LOWER(COLUMN_NAME) AS column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE LOWER(TABLE_NAME) = LOWER(?)",
+                tableName)
+                .forEach(row -> columns.add(String.valueOf(row.get("column_name")).toLowerCase()));
         } catch (Exception ignored) {
         }
+        return columns;
     }
 
     private String buildRealName(Map<String, String> values) {

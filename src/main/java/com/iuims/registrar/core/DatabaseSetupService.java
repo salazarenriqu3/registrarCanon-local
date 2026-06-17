@@ -76,6 +76,14 @@ public class DatabaseSetupService {
             try { db.execute("ALTER TABLE class_schedules MODIFY COLUMN status VARCHAR(50) DEFAULT 'OPEN'"); } catch (Exception e) {}
             // Add semester column to sys_users if it doesn't exist yet
             try { db.execute("ALTER TABLE sys_users ADD COLUMN semester INT DEFAULT 1"); } catch (Exception e) {}
+            try { db.execute("ALTER TABLE sys_users ADD COLUMN first_name VARCHAR(100) NULL"); } catch (Exception e) {}
+            try { db.execute("ALTER TABLE sys_users ADD COLUMN middle_name VARCHAR(100) NULL"); } catch (Exception e) {}
+            try { db.execute("ALTER TABLE sys_users ADD COLUMN last_name VARCHAR(100) NULL"); } catch (Exception e) {}
+            try { db.execute("ALTER TABLE sys_users ADD COLUMN email VARCHAR(150) NULL"); } catch (Exception e) {}
+            try { db.execute("ALTER TABLE sys_users ADD COLUMN mobile VARCHAR(50) NULL"); } catch (Exception e) {}
+            try { db.execute("ALTER TABLE sys_users ADD COLUMN term_year VARCHAR(50) NULL"); } catch (Exception e) {}
+            try { db.execute("ALTER TABLE sys_users ADD COLUMN student_type VARCHAR(50) NULL"); } catch (Exception e) {}
+            try { db.execute("ALTER TABLE sys_users ADD COLUMN enrollment_status_type VARCHAR(50) NULL"); } catch (Exception e) {}
             db.execute("CREATE TABLE IF NOT EXISTS vpaa_extensions (ext_id INT AUTO_INCREMENT PRIMARY KEY, schedule_id INT, faculty_id INT, status VARCHAR(50) DEFAULT 'PENDING', reason VARCHAR(255))");
             db.execute("CREATE TABLE IF NOT EXISTS grade_change_requests (" +
                 "request_id INT AUTO_INCREMENT PRIMARY KEY, grade_id BIGINT NULL, student_name VARCHAR(100) NULL, " +
@@ -211,6 +219,7 @@ public class DatabaseSetupService {
             // Create default users
             ensureUserPassword("admin", "1234", "Admin");
             ensureUserPassword("prof", "1234", "Faculty");
+            ensureUserPassword("dean", "1234", "Dean");
         } catch (Exception e) {
             System.err.println("Database Init Error: " + e.getMessage());
             e.printStackTrace();
