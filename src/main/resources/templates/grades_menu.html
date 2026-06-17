@@ -53,6 +53,7 @@
             </nav>
 
             <div class="container-fluid p-4">
+                <div th:if="${message}" class="alert alert-info" th:text="${message}"></div>
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4 class="mb-0 text-secondary">My Assigned Classes</h4>
                     <input type="text" id="classSearch" onkeyup="searchClasses()" class="form-control w-25" placeholder="Search subject...">
@@ -62,11 +63,11 @@
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                         <div>
                             <h5 class="mb-1 text-primary">Irregular Advising</h5>
-                            <p class="mb-0 text-muted">Use this when a transferee or irregular applicant needs a manual subject plan before admission approval.</p>
+                            <p class="mb-0 text-muted">This workflow is currently dormant and not part of the registrar scope.</p>
                         </div>
-                        <a th:href="@{/faculty/irregular-advising}" class="btn btn-primary">
-                            <i class="fas fa-route me-1"></i> Open Advising
-                        </a>
+                        <div class="text-muted small text-end" th:if="${deanAdvisingDormant}">
+                            Dean irregular advising is paused for now.
+                        </div>
                     </div>
                 </div>
 

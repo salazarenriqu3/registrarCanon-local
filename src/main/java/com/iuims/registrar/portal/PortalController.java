@@ -60,6 +60,7 @@ public class PortalController {
         if (user == null) return "redirect:/login";
         
         String role = (String) user.get("role");
+        if ("Dean".equals(role)) return "redirect:/grades";
         if ("Faculty".equals(role)) return "redirect:/grades";
         if ("Student".equals(role)) return "redirect:/enrollment";
         

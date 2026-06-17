@@ -42,7 +42,7 @@ public class SecurityConfig {
                     "/api/schedule/**")
                     .hasAnyRole("ADMIN", "REGISTRAR")
                 .requestMatchers("/grades/**", "/api/faculty/**")
-                    .hasAnyRole("FACULTY", "ADMIN", "REGISTRAR")
+                    .hasAnyRole("FACULTY", "DEAN", "ADMIN", "REGISTRAR")
                 .requestMatchers("/faculty/submit-class", "/faculty/unsubmit-class",
                     "/faculty/request-change", "/faculty/request-extension")
                     .hasAnyRole("FACULTY", "ADMIN", "REGISTRAR")
@@ -81,7 +81,9 @@ public class SecurityConfig {
     public AuthenticationSuccessHandler registrarSuccessHandler() {
         return (HttpServletRequest request, HttpServletResponse response, Authentication authentication) -> {
             String target = "/";
-            if (hasRole(authentication, "ROLE_FACULTY")) {
+            if (hasRole(authentication, "ROLE_DEAN")) {
+                target = "/grades";
+            } else if (hasRole(authentication, "ROLE_FACULTY")) {
                 target = "/grades";
             } else if (hasRole(authentication, "ROLE_STUDENT")) {
                 target = "/enrollment";

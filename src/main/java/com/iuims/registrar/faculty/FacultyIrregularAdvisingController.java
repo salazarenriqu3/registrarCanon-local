@@ -21,6 +21,10 @@ import java.util.Map;
 @RequestMapping("/faculty")
 public class FacultyIrregularAdvisingController {
 
+    private static final boolean DEAN_ADVISING_DORMANT = true;
+    private static final String DORMANT_NOTICE =
+        "Dean irregular advising is currently dormant and outside the registrar scope.";
+
     private final FinanceAdmissionService financeService;
     private final JdbcTemplate db;
     private final ApplicantPreRegSnapshotService preRegSnapshotService;
@@ -34,8 +38,15 @@ public class FacultyIrregularAdvisingController {
     }
 
     @GetMapping("/irregular-advising")
-    public String advisingPage(@RequestParam(required = false) String refNo, Model model, HttpSession session) {
+    public String advisingPage(@RequestParam(required = false) String refNo,
+                               Model model,
+                               HttpSession session,
+                               RedirectAttributes redirectAttributes) {
         if (!isAdviserUser(session)) return "redirect:/login";
+        if (DEAN_ADVISING_DORMANT) {
+            redirectAttributes.addFlashAttribute("message", DORMANT_NOTICE);
+            return "redirect:/grades";
+        }
 
         List<Map<String, Object>> programs = db.queryForList(
             "SELECT program_code, program_name FROM programs WHERE active_status = 1 ORDER BY program_name"
@@ -80,6 +91,10 @@ public class FacultyIrregularAdvisingController {
                                      HttpSession session,
                                      RedirectAttributes redirectAttributes) {
         if (!isAdviserUser(session)) return "redirect:/login";
+        if (DEAN_ADVISING_DORMANT) {
+            redirectAttributes.addFlashAttribute("message", DORMANT_NOTICE);
+            return "redirect:/grades";
+        }
         String message = preRegSnapshotService.upsertSnapshotHeader(
             refNo, programCode, yearLevel, semesterNumber, tuitionAmount, miscAmount, assessmentAmount, notes, currentUsername(session));
         if (message.startsWith("Irregular pre-registration header saved")) {
@@ -101,6 +116,10 @@ public class FacultyIrregularAdvisingController {
                                HttpSession session,
                                RedirectAttributes redirectAttributes) {
         if (!isAdviserUser(session)) return "redirect:/login";
+        if (DEAN_ADVISING_DORMANT) {
+            redirectAttributes.addFlashAttribute("message", DORMANT_NOTICE);
+            return "redirect:/grades";
+        }
         String message = preRegSnapshotService.addCreditLine(
             refNo, courseId, sourceSchool, sourceCourseCode, sourceCourseTitle, creditedUnits, remarks, currentUsername(session));
         if (message.startsWith("TOR credit line added")) {
@@ -117,6 +136,10 @@ public class FacultyIrregularAdvisingController {
                                   HttpSession session,
                                   RedirectAttributes redirectAttributes) {
         if (!isAdviserUser(session)) return "redirect:/login";
+        if (DEAN_ADVISING_DORMANT) {
+            redirectAttributes.addFlashAttribute("message", DORMANT_NOTICE);
+            return "redirect:/grades";
+        }
         String message = preRegSnapshotService.removeCreditLine(refNo, creditId);
         if (message.startsWith("TOR credit line removed")) {
             redirectAttributes.addFlashAttribute("successMessage", message);
@@ -134,6 +157,10 @@ public class FacultyIrregularAdvisingController {
                                    HttpSession session,
                                    RedirectAttributes redirectAttributes) {
         if (!isAdviserUser(session)) return "redirect:/login";
+        if (DEAN_ADVISING_DORMANT) {
+            redirectAttributes.addFlashAttribute("message", DORMANT_NOTICE);
+            return "redirect:/grades";
+        }
         String message = preRegSnapshotService.addSubjectLine(refNo, courseId, sectionId, sectionCode);
         if (message.startsWith("Subject added")) {
             redirectAttributes.addFlashAttribute("successMessage", message);
@@ -149,6 +176,10 @@ public class FacultyIrregularAdvisingController {
                                       HttpSession session,
                                       RedirectAttributes redirectAttributes) {
         if (!isAdviserUser(session)) return "redirect:/login";
+        if (DEAN_ADVISING_DORMANT) {
+            redirectAttributes.addFlashAttribute("message", DORMANT_NOTICE);
+            return "redirect:/grades";
+        }
         String message = preRegSnapshotService.removeSubjectLine(refNo, lineId);
         if (message.startsWith("Subject removed")) {
             redirectAttributes.addFlashAttribute("successMessage", message);
@@ -163,6 +194,10 @@ public class FacultyIrregularAdvisingController {
                                          HttpSession session,
                                          RedirectAttributes redirectAttributes) {
         if (!isAdviserUser(session)) return "redirect:/login";
+        if (DEAN_ADVISING_DORMANT) {
+            redirectAttributes.addFlashAttribute("message", DORMANT_NOTICE);
+            return "redirect:/grades";
+        }
         String message = preRegSnapshotService.finalizeSnapshot(refNo, currentUsername(session));
         if (message.startsWith("Irregular pre-registration finalized")) {
             redirectAttributes.addFlashAttribute("successMessage", message);
@@ -177,6 +212,10 @@ public class FacultyIrregularAdvisingController {
                                        HttpSession session,
                                        RedirectAttributes redirectAttributes) {
         if (!isAdviserUser(session)) return "redirect:/login";
+        if (DEAN_ADVISING_DORMANT) {
+            redirectAttributes.addFlashAttribute("message", DORMANT_NOTICE);
+            return "redirect:/grades";
+        }
         String message = preRegSnapshotService.reopenSnapshot(refNo, currentUsername(session));
         if (message.startsWith("Irregular pre-registration reopened")) {
             redirectAttributes.addFlashAttribute("successMessage", message);
@@ -192,6 +231,9 @@ public class FacultyIrregularAdvisingController {
         if (!isAdviserUser(session)) {
             return Map.of("error", "LOGIN_REQUIRED");
         }
+        if (DEAN_ADVISING_DORMANT) {
+            return Map.of("error", "DEAN_ADVISING_DORMANT", "message", DORMANT_NOTICE);
+        }
         return preRegSnapshotService.findSnapshotByReference(refNo);
     }
 
@@ -205,7 +247,7 @@ public class FacultyIrregularAdvisingController {
             return false;
         }
         String normalized = role.toString().trim();
-        return "Faculty".equalsIgnoreCase(normalized) || "Dean".equalsIgnoreCase(normalized);
+        return "Dean".equalsIgnoreCase(normalized);
     }
 
     private String currentUsername(HttpSession session) {
@@ -213,6 +255,6 @@ public class FacultyIrregularAdvisingController {
         if (raw instanceof Map<?, ?> user && user.get("username") != null) {
             return user.get("username").toString();
         }
-        return "faculty";
+        return "dean";
     }
 }

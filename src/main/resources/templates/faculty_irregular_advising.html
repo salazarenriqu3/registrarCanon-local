@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dean Irregular Evaluation</title>
+<title>Dean Irregular Evaluation</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" th:href="@{/css/modern-style.css}">
@@ -15,7 +15,7 @@
 </script>
 <div class="wrapper">
     <nav id="sidebar">
-        <div class="sidebar-header"><span class="sidebar-brand">DEAN / FACULTY</span></div>
+<div class="sidebar-header"><span class="sidebar-brand">DEAN</span></div>
         <ul class="list-unstyled components">
             <li><a th:href="@{/grades}"><i class="fas fa-arrow-left sidebar-icon"></i> Back to My Classes</a></li>
             <li class="active"><a th:href="@{/faculty/irregular-advising}"><i class="fas fa-route sidebar-icon"></i> Irregular Evaluation</a></li>
@@ -54,7 +54,7 @@
             <div th:if="${applicant == null}" class="card card-modern p-5 text-center text-muted">
                 <i class="fas fa-route fa-3x mb-3"></i>
                 <h5 class="text-dark">No applicant selected</h5>
-                <p class="mb-0">Search an irregular applicant to begin Dean / Faculty evaluation and pre-registration.</p>
+                <p class="mb-0">Search an irregular applicant to begin Dean evaluation and pre-registration.</p>
             </div>
 
             <div th:if="${applicant != null}">
@@ -81,7 +81,7 @@
                     <div class="d-flex justify-content-between flex-wrap gap-3 align-items-start mb-3">
                         <div>
                             <h4 class="mb-1 text-primary"><i class="fas fa-route me-2"></i> Irregular Applicant Evaluation</h4>
-                            <p class="text-muted mb-0">Dean / Faculty prepares the registrar-owned pre-registration snapshot. Admission reads the finalized result.</p>
+                            <p class="text-muted mb-0">The Dean prepares the registrar-owned pre-registration snapshot. Admission reads the finalized result.</p>
                         </div>
                         <div class="d-flex flex-wrap gap-2">
                             <span class="badge bg-success">IRREGULAR</span>
@@ -145,7 +145,7 @@
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Faculty / Dean Notes</label>
+                        <label class="form-label">Dean Notes</label>
                             <textarea name="notes" class="form-control" rows="3" placeholder="Optional advising notes" th:text="${preRegSnapshot != null ? preRegSnapshot['notes'] : ''}"></textarea>
                         </div>
                         <button type="submit" class="btn btn-primary">
@@ -335,7 +335,7 @@
 
                 <div th:if="${!isIrregularApplicant}" class="card card-modern p-4 mb-4">
                     <div class="alert alert-info mb-0">
-                        This applicant is not marked as irregular/transferee, so faculty advising is not needed here.
+                        This applicant is not marked as irregular/transferee, so dean advising is not needed here.
                     </div>
                 </div>
             </div>

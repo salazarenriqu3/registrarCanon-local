@@ -279,9 +279,7 @@
                                 <div class="status-dot"></div>
                                 <span th:text="${preRegFinalized == true} ? 'FINALIZED' : 'DRAFT'"></span>
                             </span>
-                            <a th:href="@{/faculty/irregular-advising(refNo=${applicant.reference_number})}" class="btn btn-outline" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">
-                                <i class="ti ti-route" aria-hidden="true"></i> Open Dean Advising
-                            </a>
+                            <span class="text-muted small align-self-center">Dean advising is currently dormant.</span>
                             <a th:href="@{/admin/pre-reg/{refNo}/snapshot(refNo=${applicant.reference_number})}" target="_blank" class="btn btn-outline" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">
                                 <i class="ti ti-code" aria-hidden="true"></i> Preview Snapshot JSON
                             </a>
