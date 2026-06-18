@@ -15,6 +15,7 @@ Use this documentation order:
 5. `DEPLOYMENT_RUNBOOK.md` - build, deploy, smoke, rollback steps.
 6. `DEMO_SCRIPT_SPRINT_FEATURES.md` - sprint feature demo for evaluators.
 7. `REQUIREMENTS_EVALUATION_CHECKLIST.md` - full 40-item requirements sheet with evidence paths.
+8. **`PRESENTATION_STORYBOARD.md`** - storyboard presentation with MySQL snippets per scene (preferred for evaluators).
 
 ## Current verdict
 

@@ -6,7 +6,7 @@
 |--------|---------|
 | [`migrations/`](migrations/) | **Non-destructive upgrades** — sprint schema on existing DBs |
 | [`capss-demo-required/`](capss-demo-required/) | **Main demo SQL** — follow `RUN_ORDER.txt` |
-| [`demo_scripts/`](demo_scripts/) | Finance QA, UAT seeds, irregular admission |
+| [`demo_scripts/`](demo_scripts/) | Finance QA, UAT seeds, **storyboard all-in-one SQL** |
 | [`sql_manual/`](sql_manual/) | Manual one-off patches (calendar, fees, scholarship seed) |
 | [`manual_patches/`](manual_patches/) | Dated schema/data patches |
 | [`manual_tests/`](manual_tests/) | Ad-hoc test schemas and seeds |
@@ -25,6 +25,15 @@ Use the bootstrap in [`../setup/`](../setup/) rather than running root-level SQL
 ```cmd
 migrations\RUN_UPGRADE.cmd
 ```
+
+## Storyboard presentation prep
+
+```cmd
+demo_scripts\RUN_STORYBOARD_DEMO_PREP.cmd
+```
+
+Or in MySQL Workbench: open `demo_scripts/STORYBOARD_SQL_ALL_IN_ONE.sql` and execute.  
+Guide: [`../docs/handoff/PRESENTATION_STORYBOARD.md`](../docs/handoff/PRESENTATION_STORYBOARD.md)
 
 ## Legacy root SQL
 

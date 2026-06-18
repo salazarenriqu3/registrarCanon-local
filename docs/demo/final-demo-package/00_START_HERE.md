@@ -58,14 +58,18 @@ registrar\docs\demo\final-demo-package\04_RUNNERS\07_LOAD_SCHOLARSHIP_TEST_DATA.
 Sprint 1–10 demo data (enrollment dates, holds, course types) is included in fresh DB setup. To reload on an existing database:
 
 ```powershell
-registrar\docs\demo\final-demo-package\04_RUNNERS\08_LOAD_SPRINT_DEMO_DATA.cmd
+registrar\docs\demo\final-demo-package\04_RUNNERS\10_RUN_STORYBOARD_PREP.cmd
 ```
+
+Or load sprint demo data only:
 
 Upgrade an existing database without full rebuild:
 
 ```powershell
 registrar\docs\demo\final-demo-package\04_RUNNERS\09_RUN_SPRINT_MIGRATION.cmd
 ```
+
+Read **`PRESENTATION_STORYBOARD.md`** first for the storyboard-style demo (Acts 0–7, SQL inline per scene).
 
 Read `01_DOCUMENTATION\DEMO_SCRIPT_SPRINT_FEATURES.md` for the sprint feature demo walkthrough.  
 Read `01_DOCUMENTATION\FINAL_DEMO_AND_TEST_MANUAL_20260618.md` before presenting.

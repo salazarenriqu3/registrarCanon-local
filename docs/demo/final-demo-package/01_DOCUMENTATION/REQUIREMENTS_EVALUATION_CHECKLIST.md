@@ -123,6 +123,9 @@ Source: *Registrar System Implementation & Evaluation Checklist* (stakeholder in
 
 | Asset | Path |
 |-------|------|
+| **Storyboard presentation** | `docs/handoff/PRESENTATION_STORYBOARD.md` |
+| **Storyboard SQL (one file)** | `db/demo_scripts/STORYBOARD_SQL_ALL_IN_ONE.sql` |
+| Storyboard prep runner | `db/demo_scripts/RUN_STORYBOARD_DEMO_PREP.cmd` |
 | Fresh bootstrap | `setup/RUN_FRESH_SETUP.cmd` |
 | Sprint schema upgrade | `db/migrations/20260619_sprint_1_10_upgrade.sql` |
 | Sprint demo seed | `db/demo_scripts/19_sprint_features_demo_seed.sql` |
