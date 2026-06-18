@@ -1,3 +1,3 @@
 # Moved
 
-See **`../../handoff/05-demo-guides/FINANCE_FIX_STEPS.md`**.
+See **`../../docs/handoff/legacy-capss/05-demo-guides/FINANCE_FIX_STEPS.md`**.

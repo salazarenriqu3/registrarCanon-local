@@ -6,7 +6,7 @@ Last updated: 2026-06-09
 **Canonical project root:** folder containing `registrar/` and `enrollment3/`  
 Example: `C:\Users\sune\Downloads\new`
 
-**Human + demo companion:** `registrar/handoffNew/COMPLETE_FRESH_SETUP_AND_DEMO_GUIDE.md`
+**Human + demo companion:** `registrar/docs/handoff/COMPLETE_FRESH_SETUP_AND_DEMO_GUIDE.md`
 
 ---
 
@@ -165,7 +165,7 @@ Login **`admin` / `1234`** on both.
 | 5 | http://localhost:8083/registrar/admin/class-scheduling?termId=1 | Blocks + IRREG-A visible |
 | 6 | http://localhost:8082/admin/cashier | Cashier loads |
 
-Full checklist: **`registrar/handoffNew/HUMAN_UAT_CHECKLIST.md`** Session 0.
+Full checklist: **`registrar/docs/handoff/HUMAN_UAT_CHECKLIST.md`** Session 0.
 
 ---
 

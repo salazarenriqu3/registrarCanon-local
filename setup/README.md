@@ -2,7 +2,7 @@
 
 Last updated: 2026-06-09
 
-**For humans:** **`../handoffNew/COMPLETE_FRESH_SETUP_AND_DEMO_GUIDE.md`** — everything in one doc.  
+**For humans:** **`../docs/handoff/COMPLETE_FRESH_SETUP_AND_DEMO_GUIDE.md`** — everything in one doc.  
 **For agents:** **`AGENT_FRESH_SETUP.md`** (prerequisites + bootstrap + smoke).  
 **Seed inventory:** **`BOOTSTRAP_SEED_MANIFEST.md`**
 
@@ -74,7 +74,7 @@ Details: **`BOOTSTRAP_SEED_MANIFEST.md`**
 | `admin` | `1234` |
 | `prof.cruz` | `1234` |
 
-Human UAT: `handoffNew/HUMAN_UAT_CHECKLIST.md`
+Human UAT: `docs/handoff/HUMAN_UAT_CHECKLIST.md`
 
 ---
 
@@ -82,6 +82,6 @@ Human UAT: `handoffNew/HUMAN_UAT_CHECKLIST.md`
 
 | Doc | Use |
 |-----|-----|
-| `handoffNew/START_HERE_NEW_PC_HANDOFF.md` | Human new-PC overview |
-| `handoffNew/HUMAN_UAT_CHECKLIST.md` | Demo sign-off |
-| `handoffNew/THREE_TRACK_LIFECYCLE_DEMO_MANUAL.md` | Lifecycle tracks |
+| `docs/handoff/START_HERE_NEW_PC_HANDOFF.md` | Human new-PC overview |
+| `docs/handoff/HUMAN_UAT_CHECKLIST.md` | Demo sign-off |
+| `docs/handoff/THREE_TRACK_LIFECYCLE_DEMO_MANUAL.md` | Lifecycle tracks |

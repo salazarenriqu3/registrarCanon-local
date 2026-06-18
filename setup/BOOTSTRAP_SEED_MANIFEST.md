@@ -51,7 +51,7 @@ Agents: if a demo feature is missing, find its step here and re-run that file in
 |------|------------|
 | Official production fee rates | Edit CSV in `setup/fees/` → Program Fees import |
 | New AY beyond 2728 | Add row to `00_upsert_academic_terms_calendar.sql`, re-run seeds 8–12 + fee SQL |
-| Custom block layout | Class Scheduling UI or `handoffNew/sql_manual/` |
+| Custom block layout | Class Scheduling UI or `db/sql_manual/` |
 | Python preflight | `_runtime_logs/run_full_preflight.py` (optional) |
 
 ---

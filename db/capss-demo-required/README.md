@@ -28,7 +28,7 @@ All scripts from the **CAPSS Deployment & Demo Manual** fresh-install and panel-
 | 2 | `01_setup/02_bsit_full_align_term_and_curriculum.sql` |
 | 3 | `01_setup/03_seed_program_fees_full_lifecycle.sql` |
 | 4 | **Pick one** in `02_demo_seed_pick_one/` |
-| 5 | Build & deploy WARs (see `../../handoff/01-new-pc/NEW_PC_SETUP.md`) |
+| 5 | Build & deploy WARs (see `../../docs/handoff/legacy-capss/01-new-pc/NEW_PC_SETUP.md`) |
 | 6+ | Grade scripts from `03_grades_maria/` (or Elon/Brent folder) after each term |
 
 ---
@@ -47,6 +47,6 @@ All scripts from the **CAPSS Deployment & Demo Manual** fresh-install and panel-
 
 Finance QA, BSN lifecycle, legacy repairs, and audits remain in **`../demo_scripts/`**.
 
-Guides: **`../../handoff/05-demo-guides/README_DEMO_SQL.md`**
+Guides: **`../../docs/handoff/legacy-capss/05-demo-guides/README_DEMO_SQL.md`**
 
 Note: run `01_setup/04_seed_demo_it_schedules_and_filter_sections.sql` after the three setup scripts when you want demo-ready IT schedules and cross-program Gen Ed offerings for filter testing.

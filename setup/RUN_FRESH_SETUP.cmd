@@ -156,7 +156,7 @@ echo   1. Start Registrar:  cd registrar ^&^& mvn -q spring-boot:run
 
 echo   2. Start Enrollment: cd enrollment3 ^&^& mvn -q spring-boot:run
 
-echo   3. UI smoke: registrar\handoffNew\HUMAN_UAT_CHECKLIST.md Session 0
+echo   3. UI smoke: registrar\docs\handoff\HUMAN_UAT_CHECKLIST.md Session 0
 
 echo   4. Agent doc:  registrar\setup\AGENT_FRESH_SETUP.md
 

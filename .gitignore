@@ -17,6 +17,9 @@ target/
 /12
 /3.0)
 
+# Local IDE / OS (also listed above for clarity)
+*.class
+
 # OS metadata
 Thumbs.db
 .DS_Store
