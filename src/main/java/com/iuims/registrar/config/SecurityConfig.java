@@ -38,6 +38,11 @@ public class SecurityConfig {
                 .requestMatchers("/admin/users", "/create-user", "/admin/update-user",
                     "/admin/delete-user", "/admin/toggle-status", "/admin/reset-password")
                     .hasRole("ADMIN")
+                .requestMatchers("/admin/programs/save", "/admin/programs/status",
+                    "/admin/programs/delete-unused")
+                    .hasRole("ADMIN")
+                .requestMatchers("/admin/programs", "/admin/programs/**")
+                    .hasAnyRole("ADMIN", "REGISTRAR")
                 .requestMatchers("/admin/**", "/create-user", "/api/search-students",
                     "/api/schedule/**")
                     .hasAnyRole("ADMIN", "REGISTRAR")

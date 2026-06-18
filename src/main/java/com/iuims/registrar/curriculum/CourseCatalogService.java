@@ -139,10 +139,19 @@ public class CourseCatalogService {
         if (existingId != null && existingId.intValue() != courseId.intValue()) {
             throw new IllegalStateException("Another course already uses this code.");
         }
+
+        Map<String, Object> existing = db.queryForList(
+            "SELECT course_code FROM courses WHERE course_id = ? LIMIT 1", courseId).stream().findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Course was not found."));
+        String storedCode = String.valueOf(existing.get("course_code"));
+        if (!storedCode.equalsIgnoreCase(normalizedCode)) {
+            throw new IllegalStateException("Course code cannot be changed after the course is created.");
+        }
+
         int changed = db.update(
-            "UPDATE courses SET course_code = ?, course_title = ?, department_id = ?, credit_units = ?, lec_units = ?, lab_units = ?, active_status = ? " +
+            "UPDATE courses SET course_title = ?, department_id = ?, credit_units = ?, lec_units = ?, lab_units = ?, active_status = ? " +
                 "WHERE course_id = ?",
-            normalizedCode, courseTitle.trim(), safeDepartmentId, safeUnits, safeLectureUnits, safeLaboratoryUnits, activeStatus, courseId);
+            courseTitle.trim(), safeDepartmentId, safeUnits, safeLectureUnits, safeLaboratoryUnits, activeStatus, courseId);
         if (changed == 0) {
             throw new IllegalArgumentException("Course was not found.");
         }
@@ -211,7 +220,8 @@ public class CourseCatalogService {
     public void deleteUnusedCourse(int courseId) {
         int usage = usageCount(courseId);
         if (usage > 0) {
-            throw new IllegalStateException("This course is already used. Deactivate it instead of deleting it.");
+            throw new IllegalStateException(
+                "This course is tied to a curriculum, scheduled class, or student record. Deactivate it instead of deleting it.");
         }
         int changed = db.update("DELETE FROM courses WHERE course_id = ?", courseId);
         if (changed == 0) {

@@ -1,6 +1,7 @@
 package com.iuims.registrar.curriculum;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Map;
 
@@ -61,5 +62,24 @@ class CourseCatalogServiceTest {
         assertThat((Iterable<?>) details.get("curricula")).hasSize(1);
         assertThat((Iterable<?>) details.get("sections")).hasSize(1);
         assertThat(details.toString()).contains("BSCS 2026", "BSCS-1-A");
+    }
+
+    @Test
+    void locksCourseCodeAfterCreate() {
+        Integer courseId = service.saveCourse(null, "CS 200", "Data Structures", 1, 2, 1, true);
+
+        assertThatThrownBy(() -> service.saveCourse(courseId, "CS 201", "Renamed", 1, 2, 1, true))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("Course code cannot be changed");
+    }
+
+    @Test
+    void blocksDeleteWhenSectionExists() {
+        Integer courseId = service.saveCourse(null, "CS 300", "Algorithms", 1, 3, 0, true);
+        db.update("INSERT INTO class_sections VALUES (40, ?, 'BSCS-1-A', 1, 1, 'Open', NULL)", courseId);
+
+        assertThatThrownBy(() -> service.deleteUnusedCourse(courseId))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("tied to");
     }
 }

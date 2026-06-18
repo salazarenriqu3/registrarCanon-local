@@ -208,7 +208,7 @@ public class DatabaseSetupService {
             );
 
             // 4. CANONICAL CURRICULUM & PROGRAM TABLES
-            db.execute("CREATE TABLE IF NOT EXISTS programs (program_id INT AUTO_INCREMENT PRIMARY KEY, program_code VARCHAR(20) NOT NULL UNIQUE, program_name VARCHAR(150), department_id INT DEFAULT NULL, school_name VARCHAR(100), active_status TINYINT(1) NOT NULL DEFAULT 1)");
+            db.execute("CREATE TABLE IF NOT EXISTS programs (program_id INT AUTO_INCREMENT PRIMARY KEY, program_code VARCHAR(20) NOT NULL UNIQUE, program_name VARCHAR(150), department_id INT DEFAULT NULL, school_name VARCHAR(100), duration_years INT NOT NULL DEFAULT 4, active_status TINYINT(1) NOT NULL DEFAULT 1)");
             db.execute("CREATE TABLE IF NOT EXISTS curriculum_templates (curriculum_id INT AUTO_INCREMENT PRIMARY KEY, program_id INT NOT NULL, curriculum_name VARCHAR(100), academic_year VARCHAR(20), version_number INT NOT NULL DEFAULT 1, approval_status VARCHAR(20) NOT NULL DEFAULT 'Draft', is_active TINYINT(1) NOT NULL DEFAULT 0)");
             db.execute("CREATE TABLE IF NOT EXISTS curriculum_courses (curriculum_course_id INT AUTO_INCREMENT PRIMARY KEY, curriculum_id INT NOT NULL, course_id INT NOT NULL, year_level INT NOT NULL, semester_number INT NOT NULL, is_required TINYINT(1) NOT NULL DEFAULT 1)");
             db.execute("CREATE TABLE IF NOT EXISTS course_prerequisites (prerequisite_id INT AUTO_INCREMENT PRIMARY KEY, course_id INT NOT NULL, prerequisite_course_id INT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY unique_prereq (course_id, prerequisite_course_id))");
@@ -362,7 +362,8 @@ public class DatabaseSetupService {
             tryExecute("UPDATE courses SET onlist = COALESCE(active_status, 1) WHERE onlist IS NULL");
             tryExecute("ALTER TABLE courses MODIFY COLUMN active_status TINYINT(1) NOT NULL DEFAULT 1");
             tryExecute("ALTER TABLE courses MODIFY COLUMN onlist TINYINT(1) NOT NULL DEFAULT 1");
-            tryExecute("ALTER TABLE departments ADD COLUMN department_code VARCHAR(20) NULL");
+            tryExecute("ALTER TABLE programs ADD COLUMN duration_years INT NOT NULL DEFAULT 4");
+            tryExecute("UPDATE programs SET duration_years = 4 WHERE duration_years IS NULL OR duration_years = 0");
             tryExecute("ALTER TABLE class_sections ADD COLUMN faculty_id INT NULL");
             tryExecute("ALTER TABLE class_sections ADD COLUMN max_capacity INT NOT NULL DEFAULT 40");
             tryExecute("ALTER TABLE class_sections ADD COLUMN section_status VARCHAR(30) NOT NULL DEFAULT 'Open'");
