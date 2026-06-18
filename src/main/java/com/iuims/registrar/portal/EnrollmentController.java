@@ -21,6 +21,8 @@ import com.iuims.registrar.jaypee.JaypeeIntegrationService;
 import com.iuims.registrar.core.PolicySettings;
 import com.iuims.registrar.core.SqlGenerator;
 import com.iuims.registrar.withdrawal.WithdrawalService;
+import com.iuims.registrar.shift.ProgramShiftRequestService;
+import com.iuims.registrar.holds.StudentHoldService;
 
 import com.iuims.registrar.academic.AcademicGradingService;
 import com.iuims.registrar.admission.FinanceAdmissionService;
@@ -64,6 +66,8 @@ public class EnrollmentController {
     private final TermFeeAdminService termFeeAdminService;
     private final OverpayDispositionService overpayDispositionService;
     private final WithdrawalService withdrawalService;
+    private final ProgramShiftRequestService programShiftRequestService;
+    private final StudentHoldService studentHoldService;
     private final RegFormEventService regFormEventService;
     private final StudentDocumentTrailService documentTrailService;
     private final StudentProfileService studentProfileService;
@@ -75,6 +79,8 @@ public class EnrollmentController {
                                 FinancePolicyService financePolicyService, TermFeeAdminService termFeeAdminService,
                                 OverpayDispositionService overpayDispositionService,
                                 WithdrawalService withdrawalService,
+                                ProgramShiftRequestService programShiftRequestService,
+                                StudentHoldService studentHoldService,
                                 RegFormEventService regFormEventService,
                                 StudentDocumentTrailService documentTrailService,
                                 StudentProfileService studentProfileService,
@@ -89,6 +95,8 @@ public class EnrollmentController {
         this.termFeeAdminService = termFeeAdminService;
         this.overpayDispositionService = overpayDispositionService;
         this.withdrawalService = withdrawalService;
+        this.programShiftRequestService = programShiftRequestService;
+        this.studentHoldService = studentHoldService;
         this.regFormEventService = regFormEventService;
         this.documentTrailService = documentTrailService;
         this.studentProfileService = studentProfileService;
@@ -105,6 +113,7 @@ public class EnrollmentController {
                                       Model model, HttpSession session) {
         financeService.syncVerifiedPayments(); 
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
+        model.addAttribute("isAdmin", isSessionAdmin(session));
         if (errorMsg != null) model.addAttribute("message", errorMsg);
         
         if (username != null && !username.trim().isEmpty()) {
@@ -130,6 +139,8 @@ public class EnrollmentController {
                 model.addAttribute("studentWithdrawalRequests",
                     withdrawalService.listStudentRequests(actualStudentNumber));
                 model.addAttribute("regFormEvents", regFormEventService.listStudentEvents(actualStudentNumber));
+                model.addAttribute("studentHolds", studentHoldService.listAllHolds(actualStudentNumber));
+                model.addAttribute("activeStudentHolds", studentHoldService.listActiveHolds(actualStudentNumber));
                 String admStatus = s.get("admission_status") != null ? s.get("admission_status").toString() : "";
                 boolean hasEnrolledSubjects = !crossLoad.isEmpty();
                 boolean isEnrolledStatus = "ENROLLED".equalsIgnoreCase(admStatus) && hasEnrolledSubjects;
@@ -211,7 +222,7 @@ public class EnrollmentController {
         Map<String, Object> currentUser = (Map<String, Object>) session.getAttribute("currentUser");
         if (currentUser == null) return "redirect:/login";
 
-        model.addAttribute("isAdmin", "admin".equalsIgnoreCase((String) currentUser.get("username")) || "Registrar".equalsIgnoreCase((String) currentUser.get("role")));
+        model.addAttribute("isAdmin", isSessionAdmin(session));
         if (errorMsg != null) model.addAttribute("errorMsg", errorMsg);
         
         if (username != null && !username.trim().isEmpty()) {
@@ -602,25 +613,14 @@ public class EnrollmentController {
                                       HttpSession session) {
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
         String username = studentNumber != null ? studentNumber.trim() : "";
-        String result = jaypeeService.shiftStudentProgram(
-            username, targetProgramCode, targetYearLevel, targetSemester, targetCurriculumId, reason);
-        if (result.startsWith("SUCCESS:")) {
-            redir.addFlashAttribute("successMessage", result);
-            recordTrail(
-                username,
-                "CURRICULUM",
-                "PROGRAM_SHIFT_COMPLETED",
-                "Registrar program shift completed",
-                "Target program " + targetProgramCode +
-                    (targetYearLevel != null ? " year " + targetYearLevel : "") +
-                    (targetSemester != null ? " semester " + targetSemester : "") +
-                    (targetCurriculumId != null ? " curriculum " + targetCurriculumId : "") +
-                    (reason != null && !reason.isBlank() ? " | " + reason.trim() : ""),
-                session,
-                "students",
-                username);
-        } else {
-            redir.addFlashAttribute("message", result);
+        try {
+            long requestId = programShiftRequestService.createRequest(
+                username, targetProgramCode, targetYearLevel, targetSemester, targetCurriculumId,
+                reason, currentUsername(session));
+            redir.addFlashAttribute("successMessage",
+                "Program shift request #" + requestId + " submitted for Dean review.");
+        } catch (Exception e) {
+            redir.addFlashAttribute("message", "Program shift request failed: " + e.getMessage());
         }
         redir.addAttribute("username", username);
         return "redirect:/admin/student-manager";
@@ -769,20 +769,29 @@ public class EnrollmentController {
     }
 
     @GetMapping("/admin/print-cor")
-    public String printCor(@RequestParam String username, Model model, HttpSession session) {
+    public String printCor(@RequestParam String username, Model model, HttpSession session, RedirectAttributes redir) {
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
         Map<String, Object> student = academicService.findStudentByIdOrName(username);
         if (student != null) {
+            String studentNumber = String.valueOf(student.get("username"));
+            Map<String, Object> financeInfo = financeService.calculateAssessment(studentNumber);
+            if (Boolean.TRUE.equals(financeInfo.get("has_accounting_block"))) {
+                redir.addFlashAttribute("errorMessage",
+                    "Registration Form blocked: required downpayment not yet satisfied.");
+                redir.addAttribute("username", studentNumber);
+                return "redirect:/admin/student-manager";
+            }
             model.addAttribute("student", student);
-            List<Map<String, Object>> crossLoad = jaypeeService.getStudentLoad((String) student.get("username"));
+            List<Map<String, Object>> crossLoad = jaypeeService.getStudentLoad(studentNumber);
             model.addAttribute("studentLoad", crossLoad);
             int total = 0; for(Map<String,Object> cls : crossLoad) { if(cls.get("units") != null) total += ((Number)cls.get("units")).intValue(); }
             model.addAttribute("totalUnits", total);
-            model.addAttribute("finance", financeService.calculateAssessment((String) student.get("username")));
-            model.addAttribute("ledger", financeService.getStudentLedger((String) student.get("username")));
+            model.addAttribute("finance", financeInfo);
+            model.addAttribute("ledger", financeService.getStudentLedger(studentNumber));
             model.addAttribute("corTermLabel", academicService.getCurrentTermLabel());
+            model.addAttribute("formTitle", jaypeeService.resolveRegistrationFormTitle(studentNumber));
             documentTrailService.recordStudentEvent(
-                String.valueOf(student.get("username")),
+                studentNumber,
                 "STUDENT",
                 "REGISTRATION_FORM",
                 "PRINTED",
@@ -791,7 +800,14 @@ public class EnrollmentController {
                 currentUsername(session),
                 null,
                 "print_cor",
-                String.valueOf(student.get("username")));
+                studentNumber);
+            regFormEventService.recordEvent(
+                studentNumber,
+                "REG_FORM_PRINTED",
+                "Registration Form printed",
+                null,
+                "Registrar print-cor",
+                currentUsername(session));
             return "print_cor";
         }
         return "redirect:/admin/student-manager";
@@ -802,10 +818,11 @@ public class EnrollmentController {
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
         Map<String, Object> student = academicService.findStudentByIdOrName(username);
         if (student != null) {
+            String studentNumber = String.valueOf(student.get("username"));
             model.addAttribute("student", student);
             model.addAttribute("academicHistory", academicService.getStudentAcademicHistory(((Number) student.get("user_id")).intValue()));
             documentTrailService.recordStudentEvent(
-                String.valueOf(student.get("username")),
+                studentNumber,
                 "STUDENT",
                 "COG",
                 "PRINTED",
@@ -814,21 +831,49 @@ public class EnrollmentController {
                 currentUsername(session),
                 null,
                 "print_cog",
-                String.valueOf(student.get("username")));
+                studentNumber);
+            regFormEventService.recordEvent(
+                studentNumber,
+                "COG_PRINTED",
+                "Certificate of Grades printed",
+                null,
+                "Registrar print-cog",
+                currentUsername(session));
             return "print_cog";
         }
         return "redirect:/admin/student-manager";
     }
 
     @GetMapping("/admin/print-tor")
-    public String printTor(@RequestParam String username, Model model, HttpSession session) {
+    public String printTorForm(@RequestParam String username, Model model, HttpSession session) {
+        if (session.getAttribute("currentUser") == null) return "redirect:/login";
+        Map<String, Object> student = academicService.findStudentByIdOrName(username);
+        if (student == null) return "redirect:/admin/student-manager";
+        model.addAttribute("student", student);
+        model.addAttribute("formMode", "PREVIEW");
+        return "admin_print_tor_form";
+    }
+
+    @PostMapping("/admin/print-tor")
+    public String printTor(@RequestParam String username,
+                           @RequestParam(required = false) String remarks,
+                           @RequestParam(required = false) String specialOrder,
+                           @RequestParam(required = false) String graduationStatus,
+                           @RequestParam(required = false) String purpose,
+                           Model model,
+                           HttpSession session) {
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
         Map<String, Object> student = academicService.findStudentByIdOrName(username);
         if (student != null) {
+            String studentNumber = String.valueOf(student.get("username"));
             model.addAttribute("student", student);
             model.addAttribute("academicHistory", academicService.getStudentAcademicHistory(((Number) student.get("user_id")).intValue()));
+            model.addAttribute("torRemarks", remarks);
+            model.addAttribute("torSpecialOrder", specialOrder);
+            model.addAttribute("torGraduationStatus", graduationStatus);
+            model.addAttribute("torPurpose", purpose);
             documentTrailService.recordStudentEvent(
-                String.valueOf(student.get("username")),
+                studentNumber,
                 "STUDENT",
                 "TOR",
                 "PRINTED",
@@ -837,7 +882,19 @@ public class EnrollmentController {
                 currentUsername(session),
                 null,
                 "print_tor",
-                String.valueOf(student.get("username")));
+                studentNumber);
+            String eventRemarks = String.join(" | ",
+                purpose != null && !purpose.isBlank() ? "Purpose: " + purpose.trim() : null,
+                remarks != null && !remarks.isBlank() ? "Remarks: " + remarks.trim() : null,
+                specialOrder != null && !specialOrder.isBlank() ? "Special order: " + specialOrder.trim() : null,
+                graduationStatus != null && !graduationStatus.isBlank() ? "Graduation: " + graduationStatus.trim() : null);
+            regFormEventService.recordEvent(
+                studentNumber,
+                "TOR_PRINTED",
+                purpose != null && !purpose.isBlank() ? purpose.trim() : "Transcript of Records printed",
+                null,
+                eventRemarks,
+                currentUsername(session));
             return "print_tor";
         }
         return "redirect:/admin/student-manager";
@@ -852,6 +909,11 @@ public class EnrollmentController {
                                           HttpSession session,
                                           RedirectAttributes ra) {
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
+        if (!isSessionAdmin(session)) {
+            ra.addFlashAttribute("errorMessage",
+                "Installment overrides are restricted to ADMIN users. Use Finance Policy or Cashier.");
+            return "redirect:/admin/student-manager?username=" + studentNumber.trim();
+        }
         List<FinancePolicyService.InstallmentRow> rows =
             FinancePolicyService.parseInstallmentRows(instNumber, instDueMonths, instLabel);
         int saved = financePolicyService.saveStudentInstallmentPlan(studentNumber, installmentTermId, rows);
@@ -875,6 +937,10 @@ public class EnrollmentController {
                                                   HttpSession session,
                                                   RedirectAttributes ra) {
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
+        if (!isSessionAdmin(session)) {
+            ra.addFlashAttribute("errorMessage", "Installment overrides are restricted to ADMIN users.");
+            return "redirect:/admin/student-manager?username=" + studentNumber.trim();
+        }
         int copied = financePolicyService.copyTermPlanToStudent(studentNumber, installmentTermId);
         if (copied == 0) {
             ra.addFlashAttribute("errorMessage", "No term/default installment rows to copy.");
@@ -900,6 +966,10 @@ public class EnrollmentController {
                                            HttpSession session,
                                            RedirectAttributes ra) {
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
+        if (!isSessionAdmin(session)) {
+            ra.addFlashAttribute("errorMessage", "Installment overrides are restricted to ADMIN users.");
+            return "redirect:/admin/student-manager?username=" + studentNumber.trim();
+        }
         financePolicyService.clearStudentInstallmentPlan(studentNumber, installmentTermId);
         recordTrail(
             studentNumber,
@@ -941,6 +1011,44 @@ public class EnrollmentController {
             return user.get("username").toString();
         }
         return "registrar";
+    }
+
+    private boolean isSessionAdmin(HttpSession session) {
+        Object raw = session.getAttribute("currentUser");
+        if (!(raw instanceof Map<?, ?> user)) return false;
+        String role = user.get("role") != null ? user.get("role").toString() : "";
+        String username = user.get("username") != null ? user.get("username").toString() : "";
+        return "ADMIN".equalsIgnoreCase(role) || "admin".equalsIgnoreCase(username);
+    }
+
+    @PostMapping("/admin/student-manager/add-hold")
+    public String addStudentHold(@RequestParam String studentNumber,
+                                 @RequestParam String office,
+                                 @RequestParam String reason,
+                                 HttpSession session,
+                                 RedirectAttributes ra) {
+        if (session.getAttribute("currentUser") == null) return "redirect:/login";
+        try {
+            studentHoldService.addHold(studentNumber, office, reason, currentUsername(session));
+            ra.addFlashAttribute("successMessage", "Student hold added.");
+        } catch (Exception e) {
+            ra.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/student-manager?username=" + studentNumber.trim();
+    }
+
+    @PostMapping("/admin/student-manager/clear-hold")
+    public String clearStudentHold(@RequestParam String studentNumber,
+                                   @RequestParam long holdId,
+                                   HttpSession session,
+                                   RedirectAttributes ra) {
+        if (session.getAttribute("currentUser") == null) return "redirect:/login";
+        if (studentHoldService.clearHold(holdId, currentUsername(session))) {
+            ra.addFlashAttribute("successMessage", "Student hold cleared.");
+        } else {
+            ra.addFlashAttribute("errorMessage", "Hold not found or already cleared.");
+        }
+        return "redirect:/admin/student-manager?username=" + studentNumber.trim();
     }
 
     private String csvCell(Object value) {

@@ -37,7 +37,7 @@
         <div class="text-center school-header">
             <h3 class="fw-bold mb-0">EMILIO AGUINALDO COLLEGE</h3>
             <p class="mb-1 text-muted">Office of the University Registrar</p>
-            <h4 class="fw-bold mt-3 mb-0">REGISTRATION FORM</h4>
+            <h4 class="fw-bold mt-3 mb-0" th:text="${formTitle != null ? formTitle : 'REGISTRATION FORM'}">REGISTRATION FORM</h4>
             <p class="mb-0 mt-1 text-muted" th:if="${corTermLabel != null and !corTermLabel.isEmpty()}" th:text="${corTermLabel}"></p>
         </div>
 

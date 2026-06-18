@@ -37,6 +37,9 @@ import java.util.Map;
 @Service
 public class JaypeeIntegrationService {
 
+    private static final String OPEN_SECTION_FILTER =
+        " AND UPPER(COALESCE(cs.section_status, 'Open')) NOT IN ('CLOSED', 'DISSOLVED')";
+
     private final JdbcTemplate db;
 
     private final ScholarEnrollmentService scholarEnrollmentService;
@@ -278,7 +281,7 @@ public class JaypeeIntegrationService {
                       "JOIN programs p ON ct.program_id = p.program_id " +
                       "LEFT JOIN class_schedules sch ON cs.section_id = sch.section_id " +
                       "WHERE p.program_code = ? AND cc.year_level = ? AND cc.semester_number = ? " +
-                      "AND COALESCE(c.onlist, c.active_status, 1) = 1 " +
+                      "AND COALESCE(c.onlist, c.active_status, 1) = 1 " + OPEN_SECTION_FILTER +
                       (currentTermId != null ? "AND cs.term_id = ? " : "") +
                       "AND cs.section_id = (" +
                       "  SELECT cs2.section_id FROM class_sections cs2 " +
@@ -313,7 +316,7 @@ public class JaypeeIntegrationService {
                       curriculumJoin +
                       "JOIN programs p ON ct.program_id = p.program_id " +
                       "LEFT JOIN class_schedules sch ON cs.section_id = sch.section_id " +
-                      "WHERE p.program_code = ? AND COALESCE(c.onlist, c.active_status, 1) = 1 " +
+                      "WHERE p.program_code = ? AND COALESCE(c.onlist, c.active_status, 1) = 1 " + OPEN_SECTION_FILTER +
                       (currentTermId != null ? "AND cs.term_id = ? " : "") +
                       "GROUP BY cs.section_id, c.course_id, c.course_code, c.course_title, c.credit_units, cs.term_id, " +
                       "  cs.section_code, cs.max_capacity, cc.year_level, cc.semester_number " +
@@ -615,7 +618,7 @@ public class JaypeeIntegrationService {
 
             // All courses in the student's program+semester, across ALL year levels.
             // Year-level is shown for reference only — access is gated by prerequisites, not year.
-            StringBuilder where = new StringBuilder(" WHERE COALESCE(c.onlist, c.active_status, 1) = 1 ");
+            StringBuilder where = new StringBuilder(" WHERE COALESCE(c.onlist, c.active_status, 1) = 1 ").append(OPEN_SECTION_FILTER);
             List<Object> courseParams = new ArrayList<>();
             if (program != null) {
                 where.append(" AND p.program_code = ? ");
@@ -754,6 +757,9 @@ public class JaypeeIntegrationService {
     public String addSubjectCrossSystem(String studentNumber, int passedId, boolean allowBlockSection) {
         try {
             if (!checkStudentExists(studentNumber)) return "ERROR: Student not found.";
+            if (isEnrollmentPeriodClosed()) {
+                return "ERROR: Enrollment period has closed. Contact the Registrar for assistance.";
+            }
 
             Map<String, Object> userInfo = db.queryForMap(
                 "SELECT program_code, year_level, semester FROM students WHERE student_number = ?", studentNumber);
@@ -1034,6 +1040,47 @@ public class JaypeeIntegrationService {
             } catch (Exception parseEx) {
                 c.put("pretty_schedule", dayStr + " " + stStr + "-" + etStr);
             }
+        }
+    }
+
+    public boolean hasOnlyStagedEnlistments(String studentNumber) {
+        if (studentNumber == null || studentNumber.isBlank() || !enlistmentSchemaService.hasEnlistmentStatusColumn()) {
+            return false;
+        }
+        try {
+            Integer termId = resolveCurrentTermId(studentNumber);
+            if (termId == null) return false;
+            Integer staged = db.queryForObject(
+                "SELECT COUNT(*) FROM student_enlistments se " +
+                    "JOIN class_sections cs ON cs.section_id = se.section_id " +
+                    "WHERE BINARY se.student_id = BINARY ? AND cs.term_id = ? AND se.enlistment_status = ?",
+                Integer.class, studentNumber.trim(), termId, enlistmentSchemaService.stagedStatusValue());
+            Integer committed = db.queryForObject(
+                "SELECT COUNT(*) FROM student_enlistments se " +
+                    "JOIN class_sections cs ON cs.section_id = se.section_id " +
+                    "WHERE BINARY se.student_id = BINARY ? AND cs.term_id = ? AND se.enlistment_status = ?",
+                Integer.class, studentNumber.trim(), termId, enlistmentSchemaService.committedStatusValue());
+            int stagedCount = staged != null ? staged : 0;
+            int committedCount = committed != null ? committed : 0;
+            return stagedCount > 0 && committedCount == 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public String resolveRegistrationFormTitle(String studentNumber) {
+        return hasOnlyStagedEnlistments(studentNumber) ? "Pre-Registration Form" : "Registration Form";
+    }
+
+    private boolean isEnrollmentPeriodClosed() {
+        try {
+            String closeDate = db.queryForObject(
+                "SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1",
+                String.class, PolicySettings.ENROLLMENT_CLOSE_DATE);
+            if (closeDate == null || closeDate.isBlank()) return false;
+            return java.time.LocalDate.now().isAfter(java.time.LocalDate.parse(closeDate.trim()));
+        } catch (Exception e) {
+            return false;
         }
     }
 

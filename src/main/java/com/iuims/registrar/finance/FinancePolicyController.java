@@ -110,6 +110,17 @@ public class FinancePolicyController {
         return redirect(targetTermId);
     }
 
+    @PostMapping("/save-enrollment-periods")
+    public String saveEnrollmentPeriods(@RequestParam Map<String, String> params,
+                                        @RequestParam(required = false) Integer installmentTermId,
+                                        HttpSession session,
+                                        RedirectAttributes ra) {
+        if (session.getAttribute("currentUser") == null) return "redirect:/login";
+        financePolicyService.saveEnrollmentPeriods(params);
+        ra.addFlashAttribute("successMessage", "Enrollment period settings saved.");
+        return redirect(installmentTermId);
+    }
+
     private String redirect(Integer installmentTermId) {
         return installmentTermId != null
             ? "redirect:/admin/finance-policy?installmentTermId=" + installmentTermId

@@ -54,6 +54,25 @@
             </div>
         </div>
 
+        <div class="row mb-3 small" th:if="${torPurpose != null or torRemarks != null or torSpecialOrder != null or torGraduationStatus != null}">
+            <div class="col-md-6" th:if="${torPurpose != null and !torPurpose.isEmpty()}">
+                <div class="fw-bold">Purpose</div>
+                <div th:text="${torPurpose}"></div>
+            </div>
+            <div class="col-md-6" th:if="${torGraduationStatus != null and !torGraduationStatus.isEmpty()}">
+                <div class="fw-bold">Graduation Status</div>
+                <div th:text="${torGraduationStatus}"></div>
+            </div>
+            <div class="col-md-6" th:if="${torSpecialOrder != null and !torSpecialOrder.isEmpty()}">
+                <div class="fw-bold">Special Order</div>
+                <div th:text="${torSpecialOrder}"></div>
+            </div>
+            <div class="col-12" th:if="${torRemarks != null and !torRemarks.isEmpty()}">
+                <div class="fw-bold">Remarks</div>
+                <div th:text="${torRemarks}"></div>
+            </div>
+        </div>
+
         <table class="table table-bordered border-dark mb-5 text-center">
             <thead>
                 <tr>

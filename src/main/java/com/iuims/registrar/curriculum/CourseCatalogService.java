@@ -24,11 +24,13 @@ public class CourseCatalogService {
     }
 
     public List<Map<String, Object>> listCourses(String search, Integer departmentId, String status) {
+        ensureCourseTypeColumn();
         String normalizedStatus = normalizeStatus(status);
         String query = search != null ? search.trim().toUpperCase(Locale.ROOT) : "";
         List<Object> args = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
             "SELECT c.course_id, c.course_code, c.course_title, c.credit_units, " +
+                "COALESCE(c.course_type, 'REGULAR') AS course_type, " +
                 "CASE WHEN COALESCE(c.lec_units, 0) + COALESCE(c.lab_units, 0) = 0 THEN c.credit_units ELSE c.lec_units END AS lec_units, " +
                 "COALESCE(c.lab_units, 0) AS lab_units, " +
                 "c.department_id, COALESCE(c.active_status, 1) AS active_status, " +
@@ -101,6 +103,19 @@ public class CourseCatalogService {
                               Integer lectureUnits,
                               Integer laboratoryUnits,
                               Boolean active) {
+        return saveCourse(courseId, courseCode, courseTitle, departmentId, lectureUnits, laboratoryUnits, active, "REGULAR");
+    }
+
+    @Transactional
+    public Integer saveCourse(Integer courseId,
+                              String courseCode,
+                              String courseTitle,
+                              Integer departmentId,
+                              Integer lectureUnits,
+                              Integer laboratoryUnits,
+                              Boolean active,
+                              String courseType) {
+        ensureCourseTypeColumn();
         String normalizedCode = normalizeCourseCode(courseCode);
         if (normalizedCode == null) {
             throw new IllegalArgumentException("Course code is required.");
@@ -119,6 +134,7 @@ public class CourseCatalogService {
             throw new IllegalArgumentException("Total credit units must be between 1 and 12.");
         }
         int activeStatus = Boolean.FALSE.equals(active) ? 0 : 1;
+        String safeCourseType = normalizeCourseType(courseType);
 
         Integer existingId = findCourseIdByCode(normalizedCode);
         if (courseId == null || courseId <= 0) {
@@ -126,9 +142,9 @@ public class CourseCatalogService {
                 throw new IllegalStateException("A course with this code already exists.");
             }
             db.update(
-                "INSERT INTO courses (course_code, course_title, department_id, credit_units, lec_units, lab_units, active_status) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                normalizedCode, courseTitle.trim(), safeDepartmentId, safeUnits, safeLectureUnits, safeLaboratoryUnits, activeStatus);
+                "INSERT INTO courses (course_code, course_title, department_id, credit_units, lec_units, lab_units, active_status, course_type) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                normalizedCode, courseTitle.trim(), safeDepartmentId, safeUnits, safeLectureUnits, safeLaboratoryUnits, activeStatus, safeCourseType);
             Integer created = findCourseIdByCode(normalizedCode);
             if (created == null) {
                 throw new IllegalStateException("Course was saved but could not be reopened.");
@@ -149,9 +165,9 @@ public class CourseCatalogService {
         }
 
         int changed = db.update(
-            "UPDATE courses SET course_title = ?, department_id = ?, credit_units = ?, lec_units = ?, lab_units = ?, active_status = ? " +
+            "UPDATE courses SET course_title = ?, department_id = ?, credit_units = ?, lec_units = ?, lab_units = ?, active_status = ?, course_type = ? " +
                 "WHERE course_id = ?",
-            courseTitle.trim(), safeDepartmentId, safeUnits, safeLectureUnits, safeLaboratoryUnits, activeStatus, courseId);
+            courseTitle.trim(), safeDepartmentId, safeUnits, safeLectureUnits, safeLaboratoryUnits, activeStatus, safeCourseType, courseId);
         if (changed == 0) {
             throw new IllegalArgumentException("Course was not found.");
         }
@@ -305,6 +321,22 @@ public class CourseCatalogService {
         return switch (normalized) {
             case "all", "inactive" -> normalized;
             default -> "active";
+        };
+    }
+
+    private void ensureCourseTypeColumn() {
+        try {
+            db.execute("ALTER TABLE courses ADD COLUMN course_type VARCHAR(20) NOT NULL DEFAULT 'REGULAR'");
+        } catch (Exception ignored) {
+        }
+    }
+
+    private String normalizeCourseType(String courseType) {
+        if (courseType == null || courseType.isBlank()) return "REGULAR";
+        String normalized = courseType.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "TUTORIAL", "PETITION" -> normalized;
+            default -> "REGULAR";
         };
     }
 

@@ -43,6 +43,10 @@ public class SecurityConfig {
                     .hasRole("ADMIN")
                 .requestMatchers("/admin/programs", "/admin/programs/**")
                     .hasAnyRole("ADMIN", "REGISTRAR")
+                .requestMatchers("/admin/class-scheduling/assign-faculty", "/api/schedule/assign-faculty")
+                    .hasAnyRole("DEAN", "ADMIN")
+                .requestMatchers("/dean/**")
+                    .hasAnyRole("DEAN", "ADMIN", "REGISTRAR")
                 .requestMatchers("/admin/**", "/create-user", "/api/search-students",
                     "/api/schedule/**")
                     .hasAnyRole("ADMIN", "REGISTRAR")

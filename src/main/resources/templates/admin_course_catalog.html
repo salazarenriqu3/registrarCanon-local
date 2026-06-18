@@ -402,9 +402,18 @@
                             <option value="false">Inactive</option>
                         </select>
                     </div>
+                    <div>
+                        <label class="form-label">Course Type</label>
+                        <select name="courseType" id="courseType" class="form-control">
+                            <option value="REGULAR">Regular</option>
+                            <option value="TUTORIAL">Tutorial</option>
+                            <option value="PETITION">Petition</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="hint-box">
                     Total credit units are calculated as lecture plus laboratory units. Editing this shared record updates how the course is shown in every curriculum and scheduling workspace; use the location button in the table to inspect its current usage first.
+                    Petition courses may use optional <code>petition_min_headcount</code> on class sections for conditional pricing (configure on Class Scheduling).
                 </div>
             </div>
             <div class="modal-footer">

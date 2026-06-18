@@ -84,6 +84,7 @@ public class WithdrawalService {
         addColumnIfMissing("student_withdrawal_requests", "estimated_charge", "DECIMAL(12,2) NOT NULL DEFAULT 0");
         addColumnIfMissing("student_withdrawal_requests", "deadline_blocked", "TINYINT(1) NOT NULL DEFAULT 0");
         addColumnIfMissing("student_withdrawal_requests", "policy_note", "VARCHAR(255) NULL");
+        addColumnIfMissing("academic_term_policies", "midterm_exam_date", "DATE NULL");
         db.execute("""
             CREATE TABLE IF NOT EXISTS student_withdrawal_request_lines (
                 line_id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -291,15 +292,16 @@ public class WithdrawalService {
         boolean afterMidterm = isAfterMidterm(termId, requestedOn);
         double units = enlistment.get("credit_units") instanceof Number n ? n.doubleValue() : 0.0;
         double originalCost = units * safeTuitionRate(studentNumber);
-        int halfDays = readEnrollmentSettingInt("drop_penalty_days_half", 7);
-        int fullDays = readEnrollmentSettingInt("drop_penalty_days_full", 14);
+        int halfDays = readEnrollmentSettingInt("drop_penalty_days_half", 14);
+        int fullDays = readEnrollmentSettingInt("drop_penalty_days_full", 21);
+        double firstWeekPct = readEnrollmentSettingDouble("drop_penalty_first_week_percent", 25.0);
         double halfPct = readEnrollmentSettingDouble("drop_penalty_half_percent", 50.0);
 
         if (afterMidterm) {
             return new WithdrawalPolicySnapshot(
                 requestedOn, enlistedAt, daysEnrolled, "AFTER_MIDTERM_BLOCKED",
                 100.0, originalCost, true,
-                "Withdrawal deadline has passed. Requests are allowed only until the term midpoint.");
+                "Withdrawal deadline has passed. Requests are allowed only until the midterm exam date.");
         }
         if (daysEnrolled >= fullDays) {
             return new WithdrawalPolicySnapshot(
@@ -309,14 +311,20 @@ public class WithdrawalService {
         }
         if (daysEnrolled >= halfDays) {
             return new WithdrawalPolicySnapshot(
-                requestedOn, enlistedAt, daysEnrolled, "PARTIAL_CHARGE",
+                requestedOn, enlistedAt, daysEnrolled, "PARTIAL_HALF",
                 halfPct, originalCost * (halfPct / 100.0), false,
                 String.format("%.0f%% tuition charge applies after %d enrolled day(s).", halfPct, halfDays));
+        }
+        if (daysEnrolled > 0) {
+            return new WithdrawalPolicySnapshot(
+                requestedOn, enlistedAt, daysEnrolled, "PARTIAL_FIRST_WEEK",
+                firstWeekPct, originalCost * (firstWeekPct / 100.0), false,
+                String.format("%.0f%% tuition charge applies within the first two weeks.", firstWeekPct));
         }
         return new WithdrawalPolicySnapshot(
             requestedOn, enlistedAt, daysEnrolled, "NO_CHARGE",
             0.0, 0.0, false,
-            "No withdrawal tuition charge applies inside the early adjustment window.");
+            "No withdrawal tuition charge applies on the enlistment date.");
     }
 
     private LocalDateTime toLocalDateTime(Object raw) {
@@ -328,6 +336,16 @@ public class WithdrawalService {
     private boolean isAfterMidterm(Integer termId, LocalDate requestedOn) {
         if (termId == null) return false;
         try {
+            LocalDate midtermDate = null;
+            try {
+                midtermDate = toLocalDate(db.queryForObject(
+                    "SELECT midterm_exam_date FROM academic_term_policies WHERE term_id = ? LIMIT 1",
+                    Object.class, termId));
+            } catch (Exception ignored) {
+            }
+            if (midtermDate != null) {
+                return requestedOn.isAfter(midtermDate);
+            }
             Map<String, Object> term = db.queryForMap(
                 "SELECT start_date, end_date FROM academic_terms WHERE term_id = ? LIMIT 1", termId);
             LocalDate start = toLocalDate(term.get("start_date"));

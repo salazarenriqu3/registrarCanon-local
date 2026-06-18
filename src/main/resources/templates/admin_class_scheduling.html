@@ -306,6 +306,15 @@
                                                         th:attr="data-course-id=${bc.course_id}" onclick="jumpToCourse(this)">
                                                     <i class="ti ti-arrow-down"></i> In courses
                                                 </button>
+                                                <form th:action="@{/admin/class-scheduling/remove-block-course}" method="post" style="display: inline; margin: 0 0 0 0.25rem;"
+                                                      th:attr="onsubmit=|return confirm('Remove ${bc.course_code} from this block? Fails if students are enlisted.');|">
+                                                    <input type="hidden" name="blockId" th:value="${b.block_id}">
+                                                    <input type="hidden" name="sectionId" th:value="${bc.section_id}">
+                                                    <input type="hidden" name="termId" th:value="${termId}">
+                                                    <button type="submit" class="btn btn-outline" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; color: var(--danger-color, #c0392b);" title="Remove course from block">
+                                                        <i class="ti ti-trash"></i>
+                                                    </button>
+                                                </form>
                                             </td>
                                         </tr>
                                     </tbody>

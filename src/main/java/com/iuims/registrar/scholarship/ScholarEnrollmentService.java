@@ -418,6 +418,25 @@ public class ScholarEnrollmentService {
         return 0.0;
     }
 
+    private String withdrawnStudentFilterSql() {
+        if (!hasStudentsAdmissionStatusColumn()) {
+            return "";
+        }
+        return " AND UPPER(COALESCE(s.admission_status, '')) NOT LIKE '%WITHDRAW%' ";
+    }
+
+    private boolean hasStudentsAdmissionStatusColumn() {
+        try {
+            Integer count = db.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns " +
+                    "WHERE table_schema = DATABASE() AND table_name = 'students' AND column_name = 'admission_status'",
+                Integer.class);
+            return count != null && count > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private boolean truthy(Object value) {
         if (value instanceof Boolean b) return b;
         if (value instanceof Number n) return n.intValue() != 0;
@@ -1133,6 +1152,7 @@ public class ScholarEnrollmentService {
                 "JOIN students s ON s.student_number = g.student_id " +
                 "LEFT JOIN sys_users u ON u.username = s.student_number " +
                 "WHERE cs.term_id = ? " +
+                withdrawnStudentFilterSql() +
                 "AND (COALESCE(g.registrar_final_grade, g.semestral_grade) IS NOT NULL " +
                 "OR " + GradeOutcomeSql.outcome("g") + " IN ('FAILED', 'INC', 'PASSED')) " +
                 "GROUP BY s.student_number, s.real_name, u.real_name, s.program_code, s.scholarship_approved, s.scholarship_type, s.discount_percentage " +

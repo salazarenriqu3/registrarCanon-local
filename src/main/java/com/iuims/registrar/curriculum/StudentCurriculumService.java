@@ -348,6 +348,69 @@ public class StudentCurriculumService {
         return sb.toString();
     }
 
+    /**
+     * Curriculum checklist for dean/registrar evaluation: passed=black, failed/pending=red.
+     */
+    public List<Map<String, Object>> buildCurriculumEvaluationChecklist(String studentNumber) {
+        if (studentNumber == null || studentNumber.isBlank()) return List.of();
+        String sn = studentNumber.trim();
+        Integer curriculumId = resolveCurrentCurriculum(sn);
+        if (curriculumId == null) return List.of();
+        try {
+            List<Map<String, Object>> courses = db.queryForList(
+                "SELECT cc.year_level, cc.semester_number, c.course_id, c.course_code, c.course_title, c.credit_units "
+                    + "FROM curriculum_courses cc "
+                    + "JOIN courses c ON c.course_id = cc.course_id "
+                    + "WHERE cc.curriculum_id = ? "
+                    + "ORDER BY cc.year_level, cc.semester_number, c.course_code",
+                curriculumId);
+            List<Object> keys = gradeLookupKeys(sn);
+            if (keys.isEmpty()) {
+                for (Map<String, Object> row : courses) {
+                    row.put("status", "pending");
+                    row.put("indicatorColor", "red");
+                }
+                return courses;
+            }
+            String in = gradeInClause(keys.size());
+            Object[] args = keys.toArray();
+            for (Map<String, Object> row : courses) {
+                int courseId = ((Number) row.get("course_id")).intValue();
+                Object[] gradeArgs = new Object[keys.size() + 1];
+                System.arraycopy(args, 0, gradeArgs, 0, keys.size());
+                gradeArgs[keys.size()] = courseId;
+                List<Map<String, Object>> grades = db.queryForList(
+                    "SELECT g.registrar_final_grade, g.semestral_grade, g.remarks, "
+                        + GradeOutcomeSql.outcome("g") + " AS grade_outcome "
+                        + "FROM grades g WHERE g.course_id = ? AND " + in + " "
+                        + "ORDER BY g.id DESC LIMIT 1",
+                    gradeArgs);
+                boolean passed = false;
+                boolean failed = false;
+                if (!grades.isEmpty()) {
+                    Map<String, Object> g = grades.get(0);
+                    String outcome = g.get("grade_outcome") != null ? g.get("grade_outcome").toString().toUpperCase() : "";
+                    if ("PASSED".equals(outcome)) {
+                        passed = true;
+                    } else if ("FAILED".equals(outcome) || "INC".equals(outcome)) {
+                        failed = true;
+                    } else {
+                        double point = g.get("registrar_final_grade") instanceof Number n
+                            ? n.doubleValue()
+                            : g.get("semestral_grade") instanceof Number n2 ? n2.doubleValue() : 0.0;
+                        if (point > 0 && point <= 3.0) passed = true;
+                        else if (point > 3.0) failed = true;
+                    }
+                }
+                row.put("status", passed ? "passed" : (failed ? "failed" : "pending"));
+                row.put("indicatorColor", passed ? "black" : "red");
+            }
+            return courses;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
     private List<Map<String, Object>> listCurriculumGradeRows(String studentNumber, boolean passedOnly) {
         if (studentNumber == null || studentNumber.isBlank()) return List.of();
         String sn = studentNumber.trim();

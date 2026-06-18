@@ -46,6 +46,7 @@ public class CourseCatalogController {
                              @RequestParam(required = false) Integer lectureUnits,
                              @RequestParam(required = false) Integer laboratoryUnits,
                              @RequestParam(required = false) Boolean active,
+                             @RequestParam(required = false, defaultValue = "REGULAR") String courseType,
                              @RequestParam(required = false) String returnSearch,
                              @RequestParam(required = false) Integer returnDepartmentId,
                              @RequestParam(required = false, defaultValue = "active") String returnStatus,
@@ -53,7 +54,7 @@ public class CourseCatalogController {
                              RedirectAttributes ra) {
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
         try {
-            Integer savedId = courseCatalogService.saveCourse(courseId, courseCode, courseTitle, departmentId, lectureUnits, laboratoryUnits, active);
+            Integer savedId = courseCatalogService.saveCourse(courseId, courseCode, courseTitle, departmentId, lectureUnits, laboratoryUnits, active, courseType);
             ra.addAttribute("msg", "Course saved.");
             ra.addAttribute("focusCourseId", savedId);
         } catch (Exception e) {

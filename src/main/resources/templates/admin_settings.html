@@ -298,6 +298,36 @@
                     </div>
                 </div>
 
+                <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #6366F1;">
+                    <div class="card-header">
+                        <h4 class="card-title" style="color: #6366F1;"><i class="ti ti-percentage" aria-hidden="true"></i> Default Grading Scheme</h4>
+                    </div>
+                    <div style="padding: 1.5rem;">
+                        <form th:action="@{/admin/save-grading-scheme}" method="post" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items: end;">
+                            <input type="hidden" name="gradingTermId" th:value="${selectedGradingTermId}">
+                            <div>
+                                <label class="form-label">Class standing %</label>
+                                <input type="number" min="0" max="100" step="0.01" name="classStandingPercent" class="form-control"
+                                       th:value="${gradingScheme != null ? gradingScheme.class_standing_percent : 50}">
+                            </div>
+                            <div>
+                                <label class="form-label">Exam / final %</label>
+                                <input type="number" min="0" max="100" step="0.01" name="examPercent" class="form-control"
+                                       th:value="${gradingScheme != null ? gradingScheme.exam_percent : 50}">
+                            </div>
+                            <div>
+                                <label class="form-label">Base scale</label>
+                                <select name="baseScale" class="form-control">
+                                    <option value="POINT" th:selected="${gradingScheme == null or gradingScheme.base_scale == 'POINT'}">Point grade</option>
+                                </select>
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-primary">Save grading scheme</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
             </div>
         </main>
     </div>

@@ -1,0 +1,40 @@
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body>
+<div class="app">
+    <div th:replace="~{fragments/layout :: topbar}"></div>
+    <div class="body-wrapper">
+        <nav th:replace="~{fragments/layout :: sidebar(activeLink='grades')}"></nav>
+        <main class="main" role="main" id="main-content">
+            <h1 class="page-title">Student Curriculum Evaluation</h1>
+            <form th:action="@{/dean/student-evaluation}" method="get" style="display:flex;gap:0.75rem;max-width:520px;margin-bottom:1.5rem;">
+                <input type="text" name="studentNumber" class="form-control" placeholder="Student number" th:value="${studentNumber}">
+                <button type="submit" class="btn btn-primary">Evaluate</button>
+            </form>
+            <div th:if="${student != null}" class="card" style="border-left:4px solid #111827;">
+                <div style="padding:1.5rem;">
+                    <h4 th:text="${student.real_name + ' — ' + student.program_code}"></h4>
+                    <p style="color:var(--text-muted);" th:if="${assignment != null}"
+                       th:text="'Curriculum: ' + ${assignment.curriculum_name} + ' (' + ${assignment.academic_year} + ')'"></p>
+                    <p><strong>Passed:</strong> <span th:text="${passedCount}">0</span> |
+                       <strong style="color:#DC2626;">Failed/Pending:</strong> <span th:text="${failedCount}">0</span></p>
+                    <table class="table-eac">
+                        <thead><tr><th>Year</th><th>Sem</th><th>Code</th><th>Title</th><th>Units</th><th>Status</th></tr></thead>
+                        <tbody>
+                        <tr th:each="row : ${checklist}">
+                            <td th:text="${row.year_level}"></td>
+                            <td th:text="${row.semester_number}"></td>
+                            <td th:text="${row.course_code}" th:style="'color:' + ${row.indicatorColor} + ';font-weight:700;'"></td>
+                            <td th:text="${row.course_title}" th:style="'color:' + ${row.indicatorColor}"></td>
+                            <td th:text="${row.credit_units}"></td>
+                            <td th:text="${row.status}" th:style="'color:' + ${row.indicatorColor} + ';text-transform:uppercase;font-weight:700;'"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>

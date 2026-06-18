@@ -29,6 +29,10 @@ public final class PolicySettings {
     public static final String SCHOLARSHIP_MIN_COMPLETED_UNITS = "SCHOLARSHIP_MIN_COMPLETED_UNITS";
     public static final String SCHOLARSHIP_DISQUALIFY_INC = "SCHOLARSHIP_DISQUALIFY_INC";
     public static final String SCHOLARSHIP_DISQUALIFY_FAILED = "SCHOLARSHIP_DISQUALIFY_FAILED";
+    public static final String ENROLLMENT_OPEN_DATE = "ENROLLMENT_OPEN_DATE";
+    public static final String ENROLLMENT_CLOSE_DATE = "ENROLLMENT_CLOSE_DATE";
+    public static final String ADD_DROP_CLOSE_DATE = "ADD_DROP_CLOSE_DATE";
+    public static final String LATE_ENROLLMENT_FEE_ENABLED = "LATE_ENROLLMENT_FEE_ENABLED";
 
     private PolicySettings() {}
 

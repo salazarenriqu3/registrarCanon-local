@@ -1,0 +1,66 @@
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body>
+<div class="app">
+    <div th:replace="~{fragments/layout :: topbar}"></div>
+    <div class="body-wrapper">
+        <nav th:replace="~{fragments/layout :: sidebar(activeLink='students')}"></nav>
+        <main class="main" role="main" id="main-content">
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+                <div>
+                    <h1 class="page-title" th:text="${pageTitle}">Program Shift Approvals</h1>
+                    <p class="page-subtitle" th:text="${pageSubtitle}"></p>
+                </div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                    <span class="status-badge pending">Dean: <span th:text="${statusCounts.get('PENDING_DEAN')}">0</span></span>
+                    <span class="status-badge pending">Registrar: <span th:text="${statusCounts.get('PENDING_REGISTRAR')}">0</span></span>
+                </div>
+            </div>
+            <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+            <div class="card">
+                <div style="padding:1rem 1.5rem; overflow-x:auto;">
+                    <table class="table-eac">
+                        <thead>
+                        <tr>
+                            <th>Student</th><th>From</th><th>To</th><th>Year/Sem</th><th>Reason</th><th>Status</th><th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(requests)}">
+                            <td colspan="7" style="text-align:center;color:var(--text-muted);">No pending requests.</td>
+                        </tr>
+                        <tr th:each="r : ${requests}">
+                            <td>
+                                <div th:text="${r.student_name}"></div>
+                                <small th:text="${r.student_number}"></small>
+                            </td>
+                            <td th:text="${r.from_program_code}"></td>
+                            <td th:text="${r.to_program_code}"></td>
+                            <td th:text="${(r.target_year_level != null ? r.target_year_level : '-') + ' / ' + (r.target_semester != null ? r.target_semester : '-')}"></td>
+                            <td th:text="${r.reason}"></td>
+                            <td th:text="${r.status}"></td>
+                            <td>
+                                <form th:if="${queueMode == 'DEAN'}" th:action="@{/faculty/program-shifts/dean-approve}" method="post" style="display:inline;">
+                                    <input type="hidden" name="requestId" th:value="${r.request_id}">
+                                    <button class="btn btn-primary btn-sm" type="submit">Forward</button>
+                                </form>
+                                <form th:if="${queueMode == 'REGISTRAR'}" th:action="@{/admin/program-shifts/approve}" method="post" style="display:inline;">
+                                    <input type="hidden" name="requestId" th:value="${r.request_id}">
+                                    <button class="btn btn-primary btn-sm" type="submit">Approve &amp; Execute</button>
+                                </form>
+                                <form th:action="${queueMode == 'DEAN'} ? @{/faculty/program-shifts/reject} : @{/admin/program-shifts/reject}" method="post" style="display:inline;">
+                                    <input type="hidden" name="requestId" th:value="${r.request_id}">
+                                    <button class="btn btn-outline btn-sm" type="submit">Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>

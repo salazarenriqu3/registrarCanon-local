@@ -265,6 +265,25 @@ public class BlockOfferingService {
         return new MaterializeResult(created, linked, skipped);
     }
 
+    @Transactional
+    public String removeCourseFromBlock(int blockId, int sectionId) {
+        ensureSchema();
+        List<Map<String, Object>> rows = db.queryForList(
+            "SELECT section_id, block_id FROM class_sections WHERE section_id = ? AND block_id = ? LIMIT 1",
+            sectionId, blockId);
+        if (rows.isEmpty()) {
+            return "ERROR: Section is not part of this block.";
+        }
+        Integer enlisted = db.queryForObject(
+            "SELECT COUNT(*) FROM student_enlistments WHERE section_id = ?", Integer.class, sectionId);
+        if (enlisted != null && enlisted > 0) {
+            return "ERROR: Cannot remove subject — " + enlisted + " enlistment(s) exist on this section.";
+        }
+        db.update("DELETE FROM class_schedules WHERE section_id = ?", sectionId);
+        db.update("DELETE FROM class_sections WHERE section_id = ?", sectionId);
+        return "SUCCESS: Subject removed from block.";
+    }
+
     private boolean curriculumBelongsToProgram(Integer curriculumId, String programCode) {
         if (curriculumId == null || programCode == null || programCode.isBlank()) return false;
         try {

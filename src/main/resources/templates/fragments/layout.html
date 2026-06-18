@@ -108,6 +108,9 @@
     <a th:href="@{/admin/class-scheduling}" class="nav-item" th:classappend="${activeLink == 'scheduling' ? 'active' : ''}">
         <i class="ti ti-calendar-time" aria-hidden="true"></i> <span>Class Scheduling</span>
     </a>
+    <a th:href="@{/admin/slot-monitoring}" class="nav-item" th:classappend="${activeLink == 'slot-monitoring' ? 'active' : ''}">
+        <i class="ti ti-chart-bar" aria-hidden="true"></i> <span>Slot Monitoring</span>
+    </a>
     <a th:href="@{/admin/faculty-load}" class="nav-item" th:classappend="${activeLink == 'faculty' ? 'active' : ''}">
         <i class="ti ti-chalkboard" aria-hidden="true"></i> <span>Faculty Load</span>
     </a>
@@ -116,6 +119,9 @@
     </a>
     <a th:href="@{/admin/withdrawals}" class="nav-item" th:classappend="${activeLink == 'withdrawals' ? 'active' : ''}">
         <i class="ti ti-file-minus" aria-hidden="true"></i> <span>Withdrawals</span>
+    </a>
+    <a th:href="@{/admin/program-shifts}" class="nav-item" th:classappend="${activeLink == 'program-shifts' ? 'active' : ''}">
+        <i class="ti ti-arrows-exchange" aria-hidden="true"></i> <span>Program Shifts</span>
     </a>
     <a th:href="@{/admin/reg-form-history}" class="nav-item" th:classappend="${activeLink == 'regform-history' ? 'active' : ''}">
         <i class="ti ti-history" aria-hidden="true"></i> <span>Reg Form History</span>

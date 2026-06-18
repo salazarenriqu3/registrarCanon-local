@@ -60,6 +60,9 @@ public class AcademicGradingService {
     private final com.iuims.registrar.core.DepartmentRepository departmentRepository;
     private final StudentDocumentTrailService documentTrailService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private GradingSchemeService gradingSchemeService;
+
     public AcademicGradingService(
             JdbcTemplate db,
             TermFeeAdminService termFeeAdminService,
@@ -141,15 +144,10 @@ public class AcademicGradingService {
 
         boolean allPeriodsPassed = !(boolean)windows.get("prelim_open") && !(boolean)windows.get("midterm_open") && !(boolean)windows.get("final_open");
 
-        int count = 0; double sum = 0;
-        if (p > 0) { sum += p; count++; }
-        if (m > 0) { sum += m; count++; }
-        if (f > 0) { sum += f; count++; }
-
-        double pointGrade = (count > 0) ? convertToPointGrade(sum / count) : 0.0;
+        double pointGrade = computeWeightedPointGrade(grade, p, m, f);
         String remarks = "Ongoing";
         if (allPeriodsPassed) { remarks = (p == 0 || m == 0 || f == 0) ? "INC" : ((pointGrade > 3.0) ? "Failed" : "Passed"); } 
-        else { remarks = (count == 3) ? ((pointGrade > 3.0) ? "Failed" : "Passed") : "Ongoing"; }
+        else { remarks = (countFilledPeriods(p, m, f) == 3) ? ((pointGrade > 3.0) ? "Failed" : "Passed") : "Ongoing"; }
         
         grade.setPrelim(BigDecimal.valueOf(p));
         grade.setMidterm(BigDecimal.valueOf(m));
@@ -170,6 +168,55 @@ public class AcademicGradingService {
     }
     
     private double parseScore(String s) { try { return Double.parseDouble(s); } catch (Exception e) { return 0.0; } }
+
+    private int countFilledPeriods(double prelim, double midterm, double finals) {
+        int count = 0;
+        if (prelim > 0) count++;
+        if (midterm > 0) count++;
+        if (finals > 0) count++;
+        return count;
+    }
+
+    private double computeWeightedPointGrade(Grade grade, double prelim, double midterm, double finals) {
+        int count = countFilledPeriods(prelim, midterm, finals);
+        if (count == 0) return 0.0;
+        String programCode = resolveProgramCodeForGrade(grade);
+        Map<String, Object> scheme = gradingSchemeService != null
+            ? gradingSchemeService.resolveForProgram(programCode)
+            : Map.of("class_standing_percent", 50.0, "exam_percent", 50.0);
+        double classWeight = scheme.get("class_standing_percent") instanceof Number n ? n.doubleValue() : 50.0;
+        double examWeight = scheme.get("exam_percent") instanceof Number n ? n.doubleValue() : 50.0;
+        if (classWeight + examWeight <= 0) {
+            classWeight = 50.0;
+            examWeight = 50.0;
+        }
+        double classSum = 0.0;
+        int classCount = 0;
+        if (prelim > 0) { classSum += prelim; classCount++; }
+        if (midterm > 0) { classSum += midterm; classCount++; }
+        double classAvg = classCount > 0 ? classSum / classCount : 0.0;
+        if (finals > 0 && classCount > 0) {
+            double weightedRaw = (classAvg * (classWeight / 100.0)) + (finals * (examWeight / 100.0));
+            return convertToPointGrade(weightedRaw);
+        }
+        double simpleSum = 0.0;
+        if (prelim > 0) simpleSum += prelim;
+        if (midterm > 0) simpleSum += midterm;
+        if (finals > 0) simpleSum += finals;
+        return convertToPointGrade(simpleSum / count);
+    }
+
+    private String resolveProgramCodeForGrade(Grade grade) {
+        try {
+            if (grade.getStudentId() != null) {
+                return db.queryForObject(
+                    "SELECT program_code FROM students WHERE student_number = ? LIMIT 1",
+                    String.class, grade.getStudentId());
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
 
     private boolean scoreChanged(double incoming, BigDecimal existing) {
         double current = existing != null ? existing.doubleValue() : 0.0;
@@ -1836,6 +1883,48 @@ public class AcademicGradingService {
 
     @Transactional
     public String closeSection(int sectionId) {
+        return closeSectionSoft(sectionId);
+    }
+
+    /** Soft-close: blocks new enlistments but keeps section and enrolled students. */
+    @Transactional
+    public String closeSectionSoft(int sectionId) {
+        try {
+            int exists = db.queryForObject(
+                "SELECT COUNT(*) FROM class_sections WHERE section_id = ?", Integer.class, sectionId);
+            if (exists == 0) {
+                return "ERROR: Section not found.";
+            }
+            db.update("UPDATE class_sections SET section_status = 'Closed' WHERE section_id = ?", sectionId);
+            return "SUCCESS";
+        } catch (Exception e) {
+            return "ERROR: " + e.getMessage();
+        }
+    }
+
+    /** Dissolve empty or registrar-approved section; hard-delete only when no committed enrollments. */
+    @Transactional
+    public String dissolveSection(int sectionId) {
+        try {
+            int enrolled = db.queryForObject(
+                "SELECT COUNT(*) FROM student_enlistments se WHERE se.section_id = ?" +
+                    enlistmentSchemaService.enlistmentStatusFilter(EnlistmentSchemaService.Scope.COMMITTED_ONLY, "se"),
+                Integer.class, sectionId);
+            if (enrolled > 0) {
+                db.update("UPDATE class_sections SET section_status = 'Dissolved' WHERE section_id = ?", sectionId);
+                return "SUCCESS: Section marked Dissolved (" + enrolled + " enrolled student(s) retained on record).";
+            }
+            classScheduleRepository.deleteAll(classScheduleRepository.findBySectionId(sectionId));
+            classSectionRepository.deleteById(sectionId);
+            return "SUCCESS: Empty section dissolved and removed.";
+        } catch (Exception e) {
+            return "ERROR: " + e.getMessage();
+        }
+    }
+
+    /** Legacy hard-delete when empty — kept for backward compatibility. */
+    @Transactional
+    public String closeSectionHard(int sectionId) {
         try {
             int enrolled = db.queryForObject(
                 "SELECT COUNT(*) FROM student_enlistments se WHERE se.section_id = ?" +

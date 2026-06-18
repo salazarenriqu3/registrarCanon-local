@@ -1,6 +1,8 @@
 package com.iuims.registrar.portal;
 import com.iuims.registrar.academic.AcademicGradingService;
 import com.iuims.registrar.academic.BlockOfferingService;
+import com.iuims.registrar.academic.GradingSchemeService;
+import com.iuims.registrar.academic.SlotMonitoringService;
 import com.iuims.registrar.academic.ClassInfoDto;
 import com.iuims.registrar.core.GradeOutcomeSql;
 import com.iuims.registrar.admission.ApplicantStatusSyncService;
@@ -36,14 +38,20 @@ public class AcademicController {
     private final TermFeeAdminService termFeeAdminService;
     private final BlockOfferingService blockOfferingService;
     private final StudentCurriculumService studentCurriculumService;
+    private final SlotMonitoringService slotMonitoringService;
+    private final GradingSchemeService gradingSchemeService;
 
     public AcademicController(AcademicGradingService academicService, TermFeeAdminService termFeeAdminService,
                               BlockOfferingService blockOfferingService,
-                              StudentCurriculumService studentCurriculumService) {
+                              StudentCurriculumService studentCurriculumService,
+                              SlotMonitoringService slotMonitoringService,
+                              GradingSchemeService gradingSchemeService) {
         this.academicService = academicService;
         this.termFeeAdminService = termFeeAdminService;
         this.blockOfferingService = blockOfferingService;
         this.studentCurriculumService = studentCurriculumService;
+        this.slotMonitoringService = slotMonitoringService;
+        this.gradingSchemeService = gradingSchemeService;
     }
 
 
@@ -148,7 +156,26 @@ public class AcademicController {
         m.addAttribute("termOptions", academicService.getAcademicTermOptionsForSettings());
         m.addAttribute("selectedGradingTermId", selectedGradingTermId);
         m.addAttribute("termReadiness", termFeeAdminService.buildTermReadinessSummary(activeTermId));
+        m.addAttribute("gradingScheme", gradingSchemeService.getDefaultScheme());
         return "admin_settings";
+    }
+
+    @PostMapping("/admin/save-grading-scheme")
+    public String saveGradingScheme(@RequestParam double classStandingPercent,
+                                    @RequestParam double examPercent,
+                                    @RequestParam(required = false, defaultValue = "POINT") String baseScale,
+                                    @RequestParam(required = false) Integer gradingTermId,
+                                    HttpSession session,
+                                    RedirectAttributes ra) {
+        if (session.getAttribute("currentUser") == null) return "redirect:/login";
+        try {
+            gradingSchemeService.saveDefaultScheme(classStandingPercent, examPercent, baseScale);
+            ra.addFlashAttribute("successMessage", "Default grading scheme saved.");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("termErrorMsg", e.getMessage());
+        }
+        String suffix = gradingTermId != null && gradingTermId > 0 ? "&gradingTermId=" + gradingTermId : "";
+        return "redirect:/admin/settings?success=true" + suffix;
     }
 
     @GetMapping("/admin/settings/readiness")
@@ -416,5 +443,67 @@ public class AcademicController {
         String r = academicService.assignFaculty(sectionId, facultyId == 0 ? null : facultyId);
         return "redirect:/admin/class-scheduling?termId=" + termId + "&msg="
             + java.net.URLEncoder.encode(r, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    @PostMapping("/admin/class-scheduling/remove-block-course")
+    public String removeBlockCourse(@RequestParam int blockId, @RequestParam int sectionId, @RequestParam int termId) {
+        String r = blockOfferingService.removeCourseFromBlock(blockId, sectionId);
+        return "redirect:/admin/class-scheduling?termId=" + termId + "&view=blocks&msg="
+            + java.net.URLEncoder.encode(r, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    @GetMapping("/admin/slot-monitoring")
+    public String slotMonitoring(@RequestParam(defaultValue = "0") int termId,
+                                   @RequestParam(required = false) String search,
+                                   @RequestParam(required = false) String msg,
+                                   Model model, HttpSession s) {
+        if (s.getAttribute("currentUser") == null) return "redirect:/login";
+        if (termId == 0) termId = academicService.getActiveTermId();
+        model.addAttribute("termId", termId);
+        model.addAttribute("terms", academicService.getAllTerms());
+        model.addAttribute("sections", slotMonitoringService.listSectionsForTerm(termId, search));
+        model.addAttribute("summary", slotMonitoringService.summary(termId));
+        model.addAttribute("search", search);
+        if (msg != null) model.addAttribute("msg", msg);
+        return "admin_slot_monitoring";
+    }
+
+    @PostMapping("/admin/slot-monitoring/update-capacity")
+    public String updateSlotCapacity(@RequestParam int sectionId, @RequestParam int termId,
+                                     @RequestParam int maxCapacity,
+                                     @RequestParam(required = false) String search) {
+        String r = slotMonitoringService.updateCapacity(sectionId, maxCapacity);
+        return redirectSlotMonitoring(termId, search, r);
+    }
+
+    @PostMapping("/admin/slot-monitoring/close")
+    public String closeSlotSection(@RequestParam int sectionId, @RequestParam int termId,
+                                   @RequestParam(required = false) String search) {
+        String r = slotMonitoringService.closeSection(sectionId);
+        return redirectSlotMonitoring(termId, search, r);
+    }
+
+    @PostMapping("/admin/slot-monitoring/dissolve")
+    public String dissolveSlotSection(@RequestParam int sectionId, @RequestParam int termId,
+                                      @RequestParam(required = false) String search) {
+        String r = slotMonitoringService.dissolveSection(sectionId);
+        return redirectSlotMonitoring(termId, search, r);
+    }
+
+    @PostMapping("/admin/slot-monitoring/bulk-close")
+    public String bulkCloseSections(@RequestParam int termId,
+                                    @RequestParam(required = false) List<Integer> sectionIds,
+                                    @RequestParam(required = false) String search) {
+        String r = slotMonitoringService.bulkClose(termId, sectionIds);
+        return redirectSlotMonitoring(termId, search, r);
+    }
+
+    private String redirectSlotMonitoring(int termId, String search, String result) {
+        StringBuilder url = new StringBuilder("/admin/slot-monitoring?termId=").append(termId);
+        if (search != null && !search.isBlank()) {
+            url.append("&search=").append(java.net.URLEncoder.encode(search, java.nio.charset.StandardCharsets.UTF_8));
+        }
+        url.append("&msg=").append(java.net.URLEncoder.encode(result, java.nio.charset.StandardCharsets.UTF_8));
+        return "redirect:" + url;
     }
 }

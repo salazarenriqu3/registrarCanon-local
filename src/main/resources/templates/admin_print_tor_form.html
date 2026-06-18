@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body>
+<div class="app">
+    <div th:replace="~{fragments/layout :: topbar}"></div>
+    <div class="body-wrapper">
+        <nav th:replace="~{fragments/layout :: sidebar(activeLink='students')}"></nav>
+        <main class="main" role="main" id="main-content">
+            <h1 class="page-title">Print Transcript of Records</h1>
+            <p class="page-subtitle" th:text="${student.real_name + ' (' + student.username + ')'}">Student</p>
+            <div class="card" style="max-width: 720px; border-left: 4px solid #111827;">
+                <div style="padding: 1.5rem;">
+                    <form th:action="@{/admin/print-tor}" method="post">
+                        <input type="hidden" name="username" th:value="${student.username}">
+                        <div style="display: grid; gap: 1rem;">
+                            <div>
+                                <label class="form-label">Purpose</label>
+                                <input type="text" name="purpose" class="form-control" placeholder="e.g. For Board Exam">
+                            </div>
+                            <div>
+                                <label class="form-label">Graduation status</label>
+                                <input type="text" name="graduationStatus" class="form-control" placeholder="e.g. Candidate for Graduation">
+                            </div>
+                            <div>
+                                <label class="form-label">Special order</label>
+                                <input type="text" name="specialOrder" class="form-control">
+                            </div>
+                            <div>
+                                <label class="form-label">Remarks</label>
+                                <textarea name="remarks" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
+                            <button type="submit" class="btn btn-primary">Generate TOR</button>
+                            <a th:href="@{/admin/student-manager(username=${student.username})}" class="btn btn-outline">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>

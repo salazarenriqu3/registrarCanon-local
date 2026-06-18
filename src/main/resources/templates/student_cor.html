@@ -49,7 +49,7 @@
                     
                     <div class="text-center cor-header position-relative z-1">
                         <h2 class="fw-bold text-primary mb-1">EMILIO AGUINALDO COLLEGE</h2>
-                        <p class="text-muted mb-0">OFFICIAL REGISTRATION FORM</p>
+                        <p class="text-muted mb-0" th:text="${formTitle != null ? formTitle : 'OFFICIAL REGISTRATION FORM'}">OFFICIAL REGISTRATION FORM</p>
                         <p class="small fw-bold mt-2" th:text="${corTermLabel != null and !corTermLabel.isEmpty() ? corTermLabel : 'Current Academic Term'}"></p>
                     </div>
 

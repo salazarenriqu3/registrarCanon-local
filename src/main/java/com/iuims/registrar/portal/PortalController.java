@@ -17,6 +17,7 @@ import com.iuims.registrar.core.SqlGenerator;
 import com.iuims.registrar.academic.AcademicGradingService;
 import com.iuims.registrar.admission.FinanceAdmissionService;
 import com.iuims.registrar.core.GlobalTermService;
+import com.iuims.registrar.holds.StudentHoldService;
 import com.iuims.registrar.jaypee.JaypeeIntegrationService;
 import com.iuims.registrar.scholarship.ScholarEnrollmentService;
 import jakarta.servlet.http.HttpSession;
@@ -42,14 +43,19 @@ public class PortalController {
     private final ScholarEnrollmentService scholarEnrollmentService;
     private final GlobalTermService globalTermService;
     private final JdbcTemplate jdbcTemplate;
+    private final StudentHoldService studentHoldService;
 
-    public PortalController(AcademicGradingService academicService, FinanceAdmissionService financeService, JaypeeIntegrationService jaypeeService, ScholarEnrollmentService scholarEnrollmentService, GlobalTermService globalTermService, JdbcTemplate jdbcTemplate) {
+    public PortalController(AcademicGradingService academicService, FinanceAdmissionService financeService,
+                            JaypeeIntegrationService jaypeeService, ScholarEnrollmentService scholarEnrollmentService,
+                            GlobalTermService globalTermService, JdbcTemplate jdbcTemplate,
+                            StudentHoldService studentHoldService) {
         this.academicService = academicService;
         this.financeService = financeService;
         this.jaypeeService = jaypeeService;
         this.scholarEnrollmentService = scholarEnrollmentService;
         this.globalTermService = globalTermService;
         this.jdbcTemplate = jdbcTemplate;
+        this.studentHoldService = studentHoldService;
     }
 
 
@@ -180,6 +186,9 @@ public class PortalController {
         if (Boolean.TRUE.equals(financeService.calculateAssessment(username).get("has_accounting_block"))) {
             return "redirect:/student/finance?errorMsg=ACCOUNTING HOLD: Settle account to view grades.";
         }
+        if (studentHoldService.hasActiveHolds(username)) {
+            return "redirect:/student/finance?errorMsg=REGISTRAR HOLD: Clear active holds to view grades.";
+        }
         m.addAttribute("academicHistory", academicService.getStudentAcademicHistory(sid));
         return "student_grades"; 
     }
@@ -212,8 +221,12 @@ public class PortalController {
         if (Boolean.TRUE.equals(financeInfo.get("has_accounting_block"))) {
             return "redirect:/student/finance?errorMsg=ACCOUNTING HOLD: Required downpayment is needed for the official Registration Form.";
         }
+        if (studentHoldService.hasActiveHolds(username)) {
+            return "redirect:/student/finance?errorMsg=REGISTRAR HOLD: Clear active holds to view your Registration Form.";
+        }
         
         m.addAttribute("student", u);
+        m.addAttribute("formTitle", jaypeeService.resolveRegistrationFormTitle(username));
 
         List<Map<String, Object>> crossLoad = jaypeeService.getStudentLoad((String) u.get("username"));
         m.addAttribute("studentLoad", crossLoad);

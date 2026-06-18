@@ -47,10 +47,17 @@ public class DatabaseSetupService {
             seedDefaultSetting(PolicySettings.SCHOLARSHIP_MIN_COMPLETED_UNITS, "27");
             seedDefaultSetting(PolicySettings.SCHOLARSHIP_DISQUALIFY_INC, "true");
             seedDefaultSetting(PolicySettings.SCHOLARSHIP_DISQUALIFY_FAILED, "true");
+            seedDefaultSetting(PolicySettings.ENROLLMENT_OPEN_DATE, "");
+            seedDefaultSetting(PolicySettings.ENROLLMENT_CLOSE_DATE, "");
+            seedDefaultSetting(PolicySettings.ADD_DROP_CLOSE_DATE, "");
+            seedDefaultSetting(PolicySettings.LATE_ENROLLMENT_FEE_ENABLED, "false");
             ensureScholarshipTypeCatalog();
+            ensureGradingSchemesTable();
+            ensureStudentHoldsTable();
             ensureScholarshipReviewWorkflow();
             db.execute("CREATE TABLE IF NOT EXISTS grading_term_windows (window_id BIGINT AUTO_INCREMENT PRIMARY KEY, term_id INT NOT NULL, grading_period VARCHAR(20) NOT NULL, start_date DATE NULL, end_date DATE NULL, override_status VARCHAR(20) NOT NULL DEFAULT 'AUTO', updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_gtw_term_period (term_id, grading_period), KEY idx_gtw_term (term_id))");
-            db.execute("CREATE TABLE IF NOT EXISTS academic_term_policies (term_id INT PRIMARY KEY, inc_expiration_date DATE NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)");
+            db.execute("CREATE TABLE IF NOT EXISTS academic_term_policies (term_id INT PRIMARY KEY, inc_expiration_date DATE NULL, midterm_exam_date DATE NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)");
+            tryExecute("ALTER TABLE academic_term_policies ADD COLUMN midterm_exam_date DATE NULL");
             ensureGradeOutcomeColumns();
             db.execute("CREATE TABLE IF NOT EXISTS audit_logs (log_id INT AUTO_INCREMENT PRIMARY KEY, admin_id INT, action VARCHAR(255), log_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
             
@@ -357,6 +364,8 @@ public class DatabaseSetupService {
             tryExecute("ALTER TABLE courses ADD COLUMN description TEXT NULL");
             tryExecute("ALTER TABLE courses ADD COLUMN lec_units INT NOT NULL DEFAULT 0");
             tryExecute("ALTER TABLE courses ADD COLUMN lab_units INT NOT NULL DEFAULT 0");
+            tryExecute("ALTER TABLE courses ADD COLUMN course_type VARCHAR(20) NOT NULL DEFAULT 'REGULAR'");
+            tryExecute("ALTER TABLE class_sections ADD COLUMN petition_min_headcount INT NULL");
             tryExecute("UPDATE courses SET lec_units = credit_units WHERE lec_units = 0 AND lab_units = 0 AND credit_units > 0");
             tryExecute("UPDATE courses SET active_status = 1 WHERE active_status IS NULL");
             tryExecute("UPDATE courses SET onlist = COALESCE(active_status, 1) WHERE onlist IS NULL");
@@ -463,6 +472,48 @@ public class DatabaseSetupService {
         try { db.execute("ALTER TABLE grade_change_requests ADD COLUMN requested_finals DECIMAL(5,2) NULL"); } catch (Exception ignored) {}
         try { db.execute("ALTER TABLE grade_change_requests ADD COLUMN applied_action VARCHAR(80) NULL"); } catch (Exception ignored) {}
         try { db.execute("ALTER TABLE grade_change_requests ADD COLUMN approved_at TIMESTAMP NULL"); } catch (Exception ignored) {}
+    }
+
+    private void ensureGradingSchemesTable() {
+        try {
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS grading_schemes (
+                    scheme_id INT AUTO_INCREMENT PRIMARY KEY,
+                    program_code VARCHAR(20) NULL,
+                    class_standing_percent DECIMAL(5,2) NOT NULL DEFAULT 50.00,
+                    exam_percent DECIMAL(5,2) NOT NULL DEFAULT 50.00,
+                    base_scale VARCHAR(20) NOT NULL DEFAULT 'POINT',
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_grading_scheme_program (program_code)
+                )
+                """);
+            Integer count = db.queryForObject("SELECT COUNT(*) FROM grading_schemes WHERE program_code IS NULL", Integer.class);
+            if (count == null || count == 0) {
+                db.update("INSERT INTO grading_schemes (program_code, class_standing_percent, exam_percent, base_scale) VALUES (NULL, 50.00, 50.00, 'POINT')");
+            }
+        } catch (Exception e) {
+            System.err.println("Grading schemes setup failed: " + e.getMessage());
+        }
+    }
+
+    private void ensureStudentHoldsTable() {
+        try {
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS student_holds (
+                    hold_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    student_number VARCHAR(100) NOT NULL,
+                    office VARCHAR(30) NOT NULL,
+                    reason VARCHAR(500) NOT NULL,
+                    active TINYINT(1) NOT NULL DEFAULT 1,
+                    created_by VARCHAR(100) NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    cleared_by VARCHAR(100) NULL,
+                    cleared_at TIMESTAMP NULL
+                )
+                """);
+        } catch (Exception e) {
+            System.err.println("Student holds setup failed: " + e.getMessage());
+        }
     }
 
     private void ensureUserPassword(String username, String rawPassword, String role) {

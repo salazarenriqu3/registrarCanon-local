@@ -109,6 +109,40 @@
                 </div>
             </div>
 
+            <!-- 2b. Enrollment periods -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div class="card-header">
+                    <div class="card-title"><i class="ti ti-calendar-event"></i> 2b. Enrollment periods</div>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <form th:action="@{/admin/finance-policy/save-enrollment-periods}" method="post">
+                        <input type="hidden" name="installmentTermId" th:value="${installmentTermId}">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+                            <div>
+                                <label class="form-label">Enrollment open date</label>
+                                <input type="date" class="form-control" name="ENROLLMENT_OPEN_DATE" th:value="${enrollmentOpenDate}">
+                            </div>
+                            <div>
+                                <label class="form-label">Enrollment close date</label>
+                                <input type="date" class="form-control" name="ENROLLMENT_CLOSE_DATE" th:value="${enrollmentCloseDate}">
+                            </div>
+                            <div>
+                                <label class="form-label">Add/drop close date</label>
+                                <input type="date" class="form-control" name="ADD_DROP_CLOSE_DATE" th:value="${addDropCloseDate}">
+                            </div>
+                            <div>
+                                <label class="form-label">Late enrollment fee enabled</label>
+                                <select class="form-control" name="LATE_ENROLLMENT_FEE_ENABLED">
+                                    <option value="false" th:selected="${!lateEnrollmentFeeEnabled}">No</option>
+                                    <option value="true" th:selected="${lateEnrollmentFeeEnabled}">Yes</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="margin-top: 1.25rem;">Save enrollment periods</button>
+                    </form>
+                </div>
+            </div>
+
             <!-- 3. Year-level unit load policy -->
             <div class="card" style="margin-bottom: 1.5rem;">
                 <div class="card-header">

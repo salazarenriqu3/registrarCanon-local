@@ -18,6 +18,7 @@ public class FinancePolicyService {
         "drop_penalty_days_half",
         "drop_penalty_days_full",
         "drop_penalty_half_percent",
+        "drop_penalty_first_week_percent",
         "rle_hours_per_unit"
     );
 
@@ -48,6 +49,7 @@ public class FinancePolicyService {
                 "UNIQUE KEY uk_student_term_inst (student_number, term_id, installment_number), " +
                 "KEY idx_sip_student_term (student_number, term_id))");
             seedEnrollmentDefaultsIfEmpty();
+            upsertEnrollmentSettingIfMissing("drop_penalty_first_week_percent", "25");
             seedDefaultInstallmentPlanIfEmpty();
         } catch (Exception ignored) {
         }
@@ -62,9 +64,10 @@ public class FinancePolicyService {
             "('max_units_regular', '27', 'Legacy max units; year-level policy is authoritative in Registrar'), " +
             "('max_units_graduating_bonus', '6', 'Graduating bonus'), " +
             "('enrollment_session_minutes', '15', 'Session timeout'), " +
-            "('drop_penalty_days_half', '7', 'Half withdrawal charge after days'), " +
-            "('drop_penalty_days_full', '14', 'Full withdrawal charge after days'), " +
+            "('drop_penalty_days_half', '14', 'Half withdrawal charge after days (50% tier)'), " +
+            "('drop_penalty_days_full', '21', 'Full withdrawal charge after days (100% tier)'), " +
             "('drop_penalty_half_percent', '50', 'Half withdrawal charge percent'), " +
+            "('drop_penalty_first_week_percent', '25', 'First-two-weeks withdrawal charge percent'), " +
             "('rle_hours_per_unit', '51', 'RLE hours per unit')");
     }
 
@@ -100,6 +103,10 @@ public class FinancePolicyService {
         view.put("defaultInstallmentPlan", listInstallmentPlan(null));
         view.put("previousTermId", effectiveTermId != null
             ? termFeeAdminService.resolvePreviousTermId(effectiveTermId) : null);
+        view.put("enrollmentOpenDate", readSystemSetting(PolicySettings.ENROLLMENT_OPEN_DATE, ""));
+        view.put("enrollmentCloseDate", readSystemSetting(PolicySettings.ENROLLMENT_CLOSE_DATE, ""));
+        view.put("addDropCloseDate", readSystemSetting(PolicySettings.ADD_DROP_CLOSE_DATE, ""));
+        view.put("lateEnrollmentFeeEnabled", PolicySettings.bool(db, PolicySettings.LATE_ENROLLMENT_FEE_ENABLED, false));
         return view;
     }
 
@@ -120,6 +127,7 @@ public class FinancePolicyService {
             case "drop_penalty_days_half" -> "7";
             case "drop_penalty_days_full" -> "14";
             case "drop_penalty_half_percent" -> "50";
+            case "drop_penalty_first_week_percent" -> "25";
             case "rle_hours_per_unit" -> "51";
             default -> "0";
         };
@@ -164,11 +172,60 @@ public class FinancePolicyService {
         }
     }
 
+    @Transactional
+    public void saveEnrollmentPeriods(Map<String, String> params) {
+        ensureSchema();
+        saveOptionalDateSetting(PolicySettings.ENROLLMENT_OPEN_DATE, params.get(PolicySettings.ENROLLMENT_OPEN_DATE));
+        saveOptionalDateSetting(PolicySettings.ENROLLMENT_CLOSE_DATE, params.get(PolicySettings.ENROLLMENT_CLOSE_DATE));
+        saveOptionalDateSetting(PolicySettings.ADD_DROP_CLOSE_DATE, params.get(PolicySettings.ADD_DROP_CLOSE_DATE));
+        String lateFee = params.get(PolicySettings.LATE_ENROLLMENT_FEE_ENABLED);
+        if (lateFee != null) {
+            PolicySettings.saveBoolean(db, PolicySettings.LATE_ENROLLMENT_FEE_ENABLED, lateFee);
+        }
+    }
+
+    public boolean isEnrollmentClosed() {
+        String closeDate = readSystemSetting(PolicySettings.ENROLLMENT_CLOSE_DATE, "");
+        if (closeDate == null || closeDate.isBlank()) return false;
+        try {
+            return java.time.LocalDate.now().isAfter(java.time.LocalDate.parse(closeDate.trim()));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void saveOptionalDateSetting(String key, String rawValue) {
+        if (rawValue == null) return;
+        PolicySettings.upsert(db, key, rawValue.trim());
+    }
+
+    private String readSystemSetting(String key, String fallback) {
+        try {
+            String value = db.queryForObject(
+                "SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1",
+                String.class, key);
+            return value != null ? value : fallback;
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
     private void upsertEnrollmentSetting(String key, String value) {
         db.update(
             "INSERT INTO enrollment_settings (setting_key, setting_value) VALUES (?, ?) " +
             "ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)",
             key, value);
+    }
+
+    private void upsertEnrollmentSettingIfMissing(String key, String value) {
+        try {
+            Integer count = db.queryForObject(
+                "SELECT COUNT(*) FROM enrollment_settings WHERE setting_key = ?", Integer.class, key);
+            if (count == null || count == 0) {
+                upsertEnrollmentSetting(key, value);
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     public List<Map<String, Object>> listInstallmentPlan(Integer termId) {

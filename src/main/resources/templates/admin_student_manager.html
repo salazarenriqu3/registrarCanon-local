@@ -935,8 +935,56 @@
                         </div>
                     </div>
 
-                    <!-- Per-student installment override -->
-                    <div class="card" th:if="${student != null and installmentTermId != null}" style="border-left: 4px solid #0EA5E9;">
+                    <!-- Student holds -->
+                    <div class="card" th:if="${student != null}" style="border-left: 4px solid #DC2626; margin-top: 1rem;">
+                        <div class="card-header">
+                            <h5 class="card-title" style="margin: 0; color: #DC2626;"><i class="ti ti-ban" aria-hidden="true"></i> Student Holds</h5>
+                        </div>
+                        <div style="padding: 1.5rem;">
+                            <form th:action="@{/admin/student-manager/add-hold}" method="post" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
+                                <input type="hidden" name="studentNumber" th:value="${student.username}">
+                                <div>
+                                    <label class="form-label">Office</label>
+                                    <select name="office" class="form-control" required>
+                                        <option value="OSA">OSA</option>
+                                        <option value="LIBRARY">Library</option>
+                                        <option value="REGISTRAR">Registrar</option>
+                                        <option value="FINANCE">Finance</option>
+                                    </select>
+                                </div>
+                                <div style="grid-column: span 2;">
+                                    <label class="form-label">Reason</label>
+                                    <input type="text" name="reason" class="form-control" required placeholder="Hold reason">
+                                </div>
+                                <div style="align-self: end;">
+                                    <button type="submit" class="btn btn-primary">Add hold</button>
+                                </div>
+                            </form>
+                            <table class="table-eac">
+                                <thead><tr><th>Office</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+                                <tbody>
+                                <tr th:if="${studentHolds == null or #lists.isEmpty(studentHolds)}">
+                                    <td colspan="4" style="text-align:center;color:var(--text-muted);">No holds recorded.</td>
+                                </tr>
+                                <tr th:each="hold : ${studentHolds}">
+                                    <td th:text="${hold.office}"></td>
+                                    <td th:text="${hold.reason}"></td>
+                                    <td><span class="status-badge" th:classappend="${hold.active == 1 ? 'inactive' : 'enrolled'}" th:text="${hold.active == 1 ? 'ACTIVE' : 'CLEARED'}"></span></td>
+                                    <td>
+                                        <form th:if="${hold.active == 1}" th:action="@{/admin/student-manager/clear-hold}" method="post" style="margin:0;">
+                                            <input type="hidden" name="studentNumber" th:value="${student.username}">
+                                            <input type="hidden" name="holdId" th:value="${hold.hold_id}">
+                                            <button type="submit" class="btn btn-outline" style="font-size:0.8rem;">Clear</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Per-student installment override (ADMIN only) -->
+                    <div class="card" th:if="${student != null and installmentTermId != null and isAdmin}" style="border-left: 4px solid #0EA5E9;">
                         <div class="card-header">
                             <h5 class="card-title" style="margin: 0; color: #0EA5E9;"><i class="ti ti-calendar-dollar" aria-hidden="true"></i> Installment Plan Override</h5>
                         </div>
