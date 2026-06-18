@@ -44,9 +44,11 @@ public class DatabaseSetupService {
             seedDefaultSetting(PolicySettings.SCHOLARSHIP_MAX_INDIVIDUAL_GRADE, "2.00");
             seedDefaultSetting(PolicySettings.SCHOLARSHIP_DEFAULT_DISCOUNT_PERCENT, "100.0");
             seedDefaultSetting(PolicySettings.SCHOLARSHIP_MIN_COMPLETED_SUBJECTS, "1");
+            seedDefaultSetting(PolicySettings.SCHOLARSHIP_MIN_COMPLETED_UNITS, "27");
             seedDefaultSetting(PolicySettings.SCHOLARSHIP_DISQUALIFY_INC, "true");
             seedDefaultSetting(PolicySettings.SCHOLARSHIP_DISQUALIFY_FAILED, "true");
             ensureScholarshipTypeCatalog();
+            ensureScholarshipReviewWorkflow();
             db.execute("CREATE TABLE IF NOT EXISTS grading_term_windows (window_id BIGINT AUTO_INCREMENT PRIMARY KEY, term_id INT NOT NULL, grading_period VARCHAR(20) NOT NULL, start_date DATE NULL, end_date DATE NULL, override_status VARCHAR(20) NOT NULL DEFAULT 'AUTO', updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_gtw_term_period (term_id, grading_period), KEY idx_gtw_term (term_id))");
             db.execute("CREATE TABLE IF NOT EXISTS academic_term_policies (term_id INT PRIMARY KEY, inc_expiration_date DATE NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)");
             ensureGradeOutcomeColumns();
@@ -353,6 +355,9 @@ public class DatabaseSetupService {
             tryExecute("ALTER TABLE courses ADD COLUMN active_status TINYINT(1) NOT NULL DEFAULT 1");
             tryExecute("ALTER TABLE courses ADD COLUMN onlist TINYINT(1) NOT NULL DEFAULT 1");
             tryExecute("ALTER TABLE courses ADD COLUMN description TEXT NULL");
+            tryExecute("ALTER TABLE courses ADD COLUMN lec_units INT NOT NULL DEFAULT 0");
+            tryExecute("ALTER TABLE courses ADD COLUMN lab_units INT NOT NULL DEFAULT 0");
+            tryExecute("UPDATE courses SET lec_units = credit_units WHERE lec_units = 0 AND lab_units = 0 AND credit_units > 0");
             tryExecute("UPDATE courses SET active_status = 1 WHERE active_status IS NULL");
             tryExecute("UPDATE courses SET onlist = COALESCE(active_status, 1) WHERE onlist IS NULL");
             tryExecute("ALTER TABLE courses MODIFY COLUMN active_status TINYINT(1) NOT NULL DEFAULT 1");
@@ -409,6 +414,32 @@ public class DatabaseSetupService {
             seedScholarshipType("OTHER", "Other / Miscellaneous", "FLAT", 0.0, 0.0, false);
         } catch (Exception e) {
             System.err.println("Scholarship type catalog setup failed: " + e.getMessage());
+        }
+    }
+
+    private void ensureScholarshipReviewWorkflow() {
+        try {
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS scholarship_review_workflow (" +
+                    "review_id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                    "student_number VARCHAR(100) NOT NULL, " +
+                    "term_id INT NOT NULL, " +
+                    "classification VARCHAR(50) NOT NULL DEFAULT 'ACADEMIC', " +
+                    "status VARCHAR(20) NOT NULL DEFAULT 'PENDING', " +
+                    "discount_percentage DECIMAL(5,2) NOT NULL DEFAULT 0.00, " +
+                    "scholarship_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00, " +
+                    "decision_note VARCHAR(500) NULL, " +
+                    "requested_by VARCHAR(100) NULL, " +
+                    "requested_at TIMESTAMP NULL, " +
+                    "reviewed_by VARCHAR(100) NULL, " +
+                    "reviewed_at TIMESTAMP NULL, " +
+                    "posted_by VARCHAR(100) NULL, " +
+                    "posted_at TIMESTAMP NULL, " +
+                    "updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
+                    "UNIQUE KEY uq_scholar_review_student_term_type (student_number, term_id, classification), " +
+                    "KEY idx_scholar_review_term_status (term_id, status))");
+        } catch (Exception e) {
+            System.err.println("Scholarship review workflow setup failed: " + e.getMessage());
         }
     }
 

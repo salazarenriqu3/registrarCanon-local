@@ -349,6 +349,9 @@ public class AcademicController {
         model.addAttribute("courses",  loadCourseSections ? academicService.getCoursesWithSections(termId) : java.util.List.of());
         model.addAttribute("faculty",  academicService.getAllFacultyForScheduling());
         model.addAttribute("rooms",    academicService.getAllRoomsForScheduling());
+        var conflictPreview = academicService.getScheduleConflictPreview(termId, 50);
+        model.addAttribute("scheduleConflicts", conflictPreview.conflicts());
+        model.addAttribute("scheduleConflictsTruncated", conflictPreview.truncated());
         if (msg != null) model.addAttribute("msg", msg);
         return "admin_class_scheduling";
     }
@@ -410,7 +413,8 @@ public class AcademicController {
     @PostMapping("/admin/class-scheduling/assign-faculty")
     public String assignFaculty(@RequestParam int sectionId, @RequestParam int termId,
                                 @RequestParam(defaultValue="0") int facultyId) {
-        academicService.assignFaculty(sectionId, facultyId == 0 ? null : facultyId);
-        return "redirect:/admin/class-scheduling?termId=" + termId;
+        String r = academicService.assignFaculty(sectionId, facultyId == 0 ? null : facultyId);
+        return "redirect:/admin/class-scheduling?termId=" + termId + "&msg="
+            + java.net.URLEncoder.encode(r, java.nio.charset.StandardCharsets.UTF_8);
     }
 }
