@@ -5,6 +5,7 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.iuims.registrar.core.EnrollmentPeriodPolicy;
 import com.iuims.registrar.forms.StudentDocumentTrailService;
 import com.iuims.registrar.scholarship.ScholarEnrollmentService;
 
@@ -191,6 +192,11 @@ public class WithdrawalService {
         if (sectionId == null || sectionId <= 0) throw new IllegalArgumentException("Subject section is required.");
         if (rc.isEmpty()) throw new IllegalArgumentException("Withdrawal reason is required.");
         ensureReasonExists(rc);
+
+        String withdrawalBlock = EnrollmentPeriodPolicy.withdrawalBlockMessage(db);
+        if (withdrawalBlock != null) {
+            throw new IllegalArgumentException(withdrawalBlock);
+        }
 
         Map<String, Object> enlistment = findActiveEnlistment(sn, sectionId);
         int courseId = ((Number) enlistment.get("course_id")).intValue();

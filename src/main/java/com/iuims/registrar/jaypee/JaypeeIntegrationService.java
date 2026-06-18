@@ -757,8 +757,9 @@ public class JaypeeIntegrationService {
     public String addSubjectCrossSystem(String studentNumber, int passedId, boolean allowBlockSection) {
         try {
             if (!checkStudentExists(studentNumber)) return "ERROR: Student not found.";
-            if (isEnrollmentPeriodClosed()) {
-                return "ERROR: Enrollment period has closed. Contact the Registrar for assistance.";
+            String periodBlock = com.iuims.registrar.core.EnrollmentPeriodPolicy.enlistmentBlockMessage(db);
+            if (periodBlock != null) {
+                return periodBlock;
             }
 
             Map<String, Object> userInfo = db.queryForMap(
@@ -929,6 +930,13 @@ public class JaypeeIntegrationService {
                                        Double chargeOverride, String policyNote) {
         try {
             if (!checkStudentExists(studentNumber)) return;
+            boolean approvedWithdrawal = policyNote != null && !policyNote.isBlank();
+            if (!approvedWithdrawal) {
+                String periodBlock = com.iuims.registrar.core.EnrollmentPeriodPolicy.enlistmentBlockMessage(db);
+                if (periodBlock != null) {
+                    throw new IllegalStateException(periodBlock.replace("ERROR: ", ""));
+                }
+            }
 
             List<Object> keys = readKeys(studentNumber);
             String seIn = inClause("e.student_id", keys.size());
@@ -1070,18 +1078,6 @@ public class JaypeeIntegrationService {
 
     public String resolveRegistrationFormTitle(String studentNumber) {
         return hasOnlyStagedEnlistments(studentNumber) ? "Pre-Registration Form" : "Registration Form";
-    }
-
-    private boolean isEnrollmentPeriodClosed() {
-        try {
-            String closeDate = db.queryForObject(
-                "SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1",
-                String.class, PolicySettings.ENROLLMENT_CLOSE_DATE);
-            if (closeDate == null || closeDate.isBlank()) return false;
-            return java.time.LocalDate.now().isAfter(java.time.LocalDate.parse(closeDate.trim()));
-        } catch (Exception e) {
-            return false;
-        }
     }
 
 }

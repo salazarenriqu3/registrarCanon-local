@@ -23,7 +23,7 @@ Sprint completion status for evaluator checklist items. **Sprint 1–2** were co
 | 2.6 | Installment overrides at Cashier | 8 | Done | Registrar override ADMIN-only; template note |
 | 2.7 | Admission fee excluded | 1–2 | Done | Prior sprint |
 | 2.8 | Enrollment open/close dates | 8 | Done | Finance Policy + enlistment block |
-| 2.9 | Add/drop close window | 8 | Partial | `ADD_DROP_CLOSE_DATE` stored; enforcement hook TBD |
+| 2.9 | Add/drop close window | 8 | Done | `ADD_DROP_CLOSE_DATE` enforced on enlistment changes and withdrawal requests |
 | 2.10 | Late enrollment fee | 8 | Partial | Flag stored; fee posting deferred |
 | 2.11 | Prorated withdrawal 25/50/100% | 4 | Done | `drop_penalty_first_week_percent` + tiers |
 | **3. Registrar Module & Records** |
@@ -78,7 +78,6 @@ Sprint completion status for evaluator checklist items. **Sprint 1–2** were co
 ## Deferred / follow-up
 
 - Full petition course conditional pricing engine
-- `ADD_DROP_CLOSE_DATE` automated lock on enlistment/withdrawal
 - Late enrollment fee ledger posting when flag enabled
 - Per-program grading scheme UI (DB supports nullable `program_code`)
 - Admissions-module open date screen (registrar stores dates only)

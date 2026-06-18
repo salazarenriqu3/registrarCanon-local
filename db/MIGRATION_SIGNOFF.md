@@ -32,6 +32,7 @@ Use this template when promoting schema changes from Registrar dev to shared/sta
 - [ ] Program shift request creates row and appears in Dean/Registrar queues
 - [ ] Student hold blocks portal my-load / my-grades
 - [ ] Finance Policy saves enrollment close date and blocks enlistment after close
+- [ ] Add/drop close date blocks enlistment changes and new withdrawal requests
 
 ## Rollback notes
 

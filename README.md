@@ -35,6 +35,7 @@ Demo login: `admin` / `1234`
 | [`docs/handoff/START_HERE_NEW_PC_HANDOFF.md`](docs/handoff/START_HERE_NEW_PC_HANDOFF.md) | Current handover entry point |
 | [`docs/demo/final-demo-package/00_START_HERE.md`](docs/demo/final-demo-package/00_START_HERE.md) | Packaged demo/UAT bundle |
 | [`docs/handoff/COMPLETE_FRESH_SETUP_AND_DEMO_GUIDE.md`](docs/handoff/COMPLETE_FRESH_SETUP_AND_DEMO_GUIDE.md) | Full setup and demo guide |
+| [`docs/handoff/PRODUCTION_GO_LIVE_CHECKLIST.md`](docs/handoff/PRODUCTION_GO_LIVE_CHECKLIST.md) | Production deployment gates and sign-off |
 | [`setup/README.md`](setup/README.md) | Bootstrap commands and folder map |
 | [`docs/README.md`](docs/README.md) | Documentation index |
 
@@ -44,6 +45,15 @@ Legacy CAPSS docs: [`docs/handoff/legacy-capss/`](docs/handoff/legacy-capss/)
 
 ```cmd
 mvn test
+mvn test -Dtest=!ModulithTests
+mvn spring-boot:run
+```
+
+Production profile (requires env vars — see `docs/handoff/PRODUCTION_GO_LIVE_CHECKLIST.md`):
+
+```cmd
+set SPRING_PROFILES_ACTIVE=prod
+set SPRING_DATASOURCE_PASSWORD=<secret>
 mvn spring-boot:run
 ```
 
