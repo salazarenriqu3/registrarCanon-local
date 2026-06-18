@@ -12,6 +12,9 @@ Use this documentation order:
 2. `FINAL_DEMO_AND_TEST_MANUAL_20260618.md` - fresh setup, build gate, presentation flow, complete UAT, and sign-off form.
 3. `FINAL_HANDOVER_20260618.md` - build evidence, open risks, production blockers, and successor instructions.
 4. `PRODUCTION_GO_LIVE_CHECKLIST.md` - staged gates for staging pilot and production sign-off (post sprint 1–10).
+5. `DEPLOYMENT_RUNBOOK.md` - build, deploy, smoke, rollback steps.
+6. `DEMO_SCRIPT_SPRINT_FEATURES.md` - sprint feature demo for evaluators.
+7. `REQUIREMENTS_EVALUATION_CHECKLIST.md` - full 40-item requirements sheet with evidence paths.
 
 ## Current verdict
 

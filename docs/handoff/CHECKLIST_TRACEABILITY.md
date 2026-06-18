@@ -71,7 +71,7 @@ Sprint completion status for evaluator checklist items. **Sprint 1–2** were co
 | 5 | Grading configuration | Complete (default scheme) |
 | 6 | Scholarships & holds | Complete |
 | 7 | Dean evaluation & RBAC | Complete |
-| 8 | Enrollment periods | Complete (enforcement partial on add/drop/late fee) |
+| 8 | Enrollment periods | Complete |
 | 9 | Course types | Complete (petition pricing logic deferred) |
 | 10 | Docs & CI | Complete |
 

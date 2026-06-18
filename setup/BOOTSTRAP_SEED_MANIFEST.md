@@ -29,6 +29,8 @@ Agents: if a demo feature is missing, find its step here and re-run that file in
 | 15 | `registrar/setup/sql/05_materialize_all_calendar_term_fees.sql` | Copy fees to **all other calendar terms** (2425 S2 → 2728 S2) |
 | 16 | `registrar/setup/sql/03_assign_prof_cruz_demo.sql` | Assign **all active-term sections** to `prof.cruz`; refresh grading windows |
 | 17 | `registrar/setup/sql/04_verify_readiness.sql` | SQL report — fees, sections, blocks, faculty, gates |
+| 18 | `registrar/db/migrations/20260619_sprint_1_10_upgrade.sql` | Sprint 1–10 tables/columns/settings (idempotent) |
+| 19 | `registrar/db/demo_scripts/19_sprint_features_demo_seed.sql` | Enrollment dates, demo holds, course types, midterm policy |
 
 ---
 

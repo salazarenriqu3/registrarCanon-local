@@ -4,6 +4,7 @@
 
 | Folder | Purpose |
 |--------|---------|
+| [`migrations/`](migrations/) | **Non-destructive upgrades** — sprint schema on existing DBs |
 | [`capss-demo-required/`](capss-demo-required/) | **Main demo SQL** — follow `RUN_ORDER.txt` |
 | [`demo_scripts/`](demo_scripts/) | Finance QA, UAT seeds, irregular admission |
 | [`sql_manual/`](sql_manual/) | Manual one-off patches (calendar, fees, scholarship seed) |
@@ -17,6 +18,12 @@ Use the bootstrap in [`../setup/`](../setup/) rather than running root-level SQL
 
 ```cmd
 ..\setup\RUN_FRESH_SETUP.cmd
+```
+
+## Upgrade existing database
+
+```cmd
+migrations\RUN_UPGRADE.cmd
 ```
 
 ## Legacy root SQL

@@ -104,7 +104,7 @@ if errorlevel 1 (
 
 echo.
 
-echo === Core schema + seeds (17 steps — see BOOTSTRAP_SEED_MANIFEST.md) ===
+echo === Core schema + seeds (19 steps — see BOOTSTRAP_SEED_MANIFEST.md) ===
 
 
 
@@ -141,6 +141,10 @@ call :run "registrar\setup\sql\05_materialize_all_calendar_term_fees.sql"
 call :run "registrar\setup\sql\03_assign_prof_cruz_demo.sql"
 
 call :run "registrar\setup\sql\04_verify_readiness.sql"
+
+call :run "registrar\db\migrations\20260619_sprint_1_10_upgrade.sql"
+
+call :run "registrar\db\demo_scripts\19_sprint_features_demo_seed.sql"
 
 
 

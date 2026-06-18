@@ -75,6 +75,12 @@ call :run "sql\03_ACADEMIC_MASTER\16_assign_demo_faculty.sql"
 if errorlevel 1 exit /b 1
 call :run "sql\05_VERIFICATION\17_verify_readiness.sql"
 if errorlevel 1 exit /b 1
+call :run "sql\02_CONTRACTS\18_sprint_1_10_schema.sql"
+if errorlevel 1 exit /b 1
+call :run "..\03_TEST_DATA\19_sprint_features_demo_seed.sql"
+if errorlevel 1 exit /b 1
+call :run "..\03_TEST_DATA\12_verify_sprint_features.sql"
+if errorlevel 1 exit /b 1
 
 echo.
 echo SUCCESS: eacdb was rebuilt and verified.

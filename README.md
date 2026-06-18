@@ -36,6 +36,9 @@ Demo login: `admin` / `1234`
 | [`docs/demo/final-demo-package/00_START_HERE.md`](docs/demo/final-demo-package/00_START_HERE.md) | Packaged demo/UAT bundle |
 | [`docs/handoff/COMPLETE_FRESH_SETUP_AND_DEMO_GUIDE.md`](docs/handoff/COMPLETE_FRESH_SETUP_AND_DEMO_GUIDE.md) | Full setup and demo guide |
 | [`docs/handoff/PRODUCTION_GO_LIVE_CHECKLIST.md`](docs/handoff/PRODUCTION_GO_LIVE_CHECKLIST.md) | Production deployment gates and sign-off |
+| [`docs/handoff/DEPLOYMENT_RUNBOOK.md`](docs/handoff/DEPLOYMENT_RUNBOOK.md) | Build, deploy, smoke, rollback |
+| [`docs/handoff/DEMO_SCRIPT_SPRINT_FEATURES.md`](docs/handoff/DEMO_SCRIPT_SPRINT_FEATURES.md) | Sprint 1–10 evaluator demo script |
+| [`docs/handoff/REQUIREMENTS_EVALUATION_CHECKLIST.md`](docs/handoff/REQUIREMENTS_EVALUATION_CHECKLIST.md) | Full 40-item requirements sheet |
 | [`setup/README.md`](setup/README.md) | Bootstrap commands and folder map |
 | [`docs/README.md`](docs/README.md) | Documentation index |
 
