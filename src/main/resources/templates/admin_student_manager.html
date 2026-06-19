@@ -1,6 +1,48 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head}"></head>
+<style>
+    .profile-panel > summary {
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+    .profile-panel > summary::-webkit-details-marker { display: none; }
+    .profile-panel > summary .profile-chevron {
+        transition: transform 0.15s ease;
+        color: var(--text-muted);
+        flex-shrink: 0;
+    }
+    .profile-panel[open] > summary .profile-chevron { transform: rotate(90deg); }
+    .profile-section {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        margin-bottom: 0.75rem;
+        background: var(--bg-primary);
+    }
+    .profile-section > summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 0.65rem 0.9rem;
+        font-weight: 700;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-muted);
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+    .profile-section > summary::-webkit-details-marker { display: none; }
+    .profile-section[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+    .profile-section-body { padding: 1rem; }
+</style>
 <body>
 <div class="app">
     <div th:replace="~{fragments/layout :: topbar}"></div>
@@ -137,11 +179,11 @@
                                     </span>
                                     <span th:if="${curriculumDeficiencyCount != null and curriculumDeficiencyCount > 0}" class="status-badge waitlist" style="font-size: 0.72rem; padding: 0.15rem 0.45rem;">
                                         <div class="status-dot"></div>
-                                        <span th:if="${curriculumDeficiencyCount == 1}" th:text="${curriculumDeficiencyCount + ' deficiency'}"></span>
-                                        <span th:if="${curriculumDeficiencyCount != 1}" th:text="${curriculumDeficiencyCount + ' deficiencies'}"></span>
+                                        <span th:if="${curriculumDeficiencyCount == 1}" th:text="${curriculumDeficiencyCount + ' curriculum gap'}"></span>
+                                        <span th:if="${curriculumDeficiencyCount != 1}" th:text="${curriculumDeficiencyCount + ' curriculum gaps'}"></span>
                                     </span>
                                     <span th:if="${curriculumDeficiencyCount == null or curriculumDeficiencyCount == 0}" class="status-badge enrolled" style="font-size: 0.72rem; padding: 0.15rem 0.45rem;">
-                                        <div class="status-dot"></div> Curriculum clear
+                                        <div class="status-dot"></div> Current term clear
                                     </span>
                                 </div>
                                 <div th:if="${hasAccountingBlock}" style="font-size: 0.8rem; color: #991B1B; margin-top: 0.45rem; line-height: 1.35;">
@@ -151,7 +193,9 @@
                                     Forwarded balance PHP <span th:text="${forwardedBalanceFmt}">0.00</span>; outstanding PHP <span th:text="${outstandingBalanceFmt}">0.00</span>.
                                 </div>
                                 <div th:if="${curriculumDeficiencyCount != null and curriculumDeficiencyCount > 0}" style="font-size: 0.8rem; color: #92400E; margin-top: 0.35rem; line-height: 1.35;">
-                                    Review missing courses in TOR &amp; Transfer Crediting below.
+                                    Required courses through the current year/semester without a pass or active enlistment.
+                                    Transfer/TOR crediting is handled in
+                                    <a th:href="${enrollmentCashierUrl}" target="_blank" rel="noopener" style="font-weight: 700; color: var(--primary-color);">Enrollment (Cashier)</a>.
                                 </div>
                             </div>
                         </div>
@@ -296,11 +340,18 @@
                                     <span th:if="${!document['submitted']}" class="status-badge inactive" style="padding: 0.12rem 0.4rem;">Not submitted</span>
                                 </div>
                             </div>
-                            <a th:if="${document['document_key'] != null}"
-                               th:href="@{/admin/student-manager/admission-document(studentNumber=${student.username},documentKey=${document['document_key']})}"
-                               target="_blank" rel="noopener" class="btn btn-ghost" style="white-space: nowrap; border: 1px solid #D97706; color: #B45309;">
-                                <i class="ti ti-eye" aria-hidden="true"></i> View
-                            </a>
+                            <div style="display: flex; gap: 0.4rem; flex-shrink: 0;">
+                                <a th:if="${document['document_key'] != null and document['submitted']}"
+                                   th:href="@{/admin/student-manager/admission-document(studentNumber=${student.username},documentKey=${document['document_key']})}"
+                                   target="_blank" rel="noopener" class="btn btn-ghost" style="white-space: nowrap; border: 1px solid #D97706; color: #B45309;">
+                                    <i class="ti ti-eye" aria-hidden="true"></i> View
+                                </a>
+                                <a th:if="${document['document_key'] != null and document['submitted']}"
+                                   th:href="@{/admin/student-manager/admission-document/print(studentNumber=${student.username},documentKey=${document['document_key']})}"
+                                   target="_blank" rel="noopener" class="btn btn-ghost" style="white-space: nowrap; border: 1px solid #92400E; color: #92400E; background: #FFFBEB;">
+                                    <i class="ti ti-printer" aria-hidden="true"></i> Print
+                                </a>
+                            </div>
                         </div>
                     </div>
                     <div th:if="${applicantDocuments == null or applicantDocuments.isEmpty()}" style="padding: 1.25rem; color: var(--text-muted);">
@@ -309,16 +360,23 @@
                 </div>
             </div>
 
-            <div class="card" th:if="${student != null}" style="margin-bottom: 1.5rem; border-left: 4px solid #0F766E;">
-                <div class="card-header">
+            <details class="card profile-panel" th:if="${student != null}" style="margin-bottom: 1.5rem; border-left: 4px solid #0F766E;">
+                <summary class="card-header" style="user-select: none;">
                     <h5 class="card-title" style="margin: 0; color: #0F766E;">
                         <i class="ti ti-user-edit" aria-hidden="true"></i> Registrar Editable Profile
                     </h5>
-                </div>
+                    <span class="profile-chevron"><i class="ti ti-chevron-right" aria-hidden="true"></i></span>
+                </summary>
                 <form th:action="@{/admin/student-manager/profile}" method="post" style="padding: 1.5rem;">
                     <input type="hidden" name="studentNumber" th:value="${student.username}">
 
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+                    <details class="profile-section" open>
+                        <summary>
+                            <span><i class="ti ti-id" aria-hidden="true"></i> Identity &amp; Contact</span>
+                            <span class="profile-chevron"><i class="ti ti-chevron-right" aria-hidden="true"></i></span>
+                        </summary>
+                        <div class="profile-section-body">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem;">
                         <div>
                             <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">First Name</label>
                             <input name="first_name" class="form-control" th:value="${studentProfile.first_name}">
@@ -343,9 +401,17 @@
                             <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Mobile</label>
                             <input name="mobile" class="form-control" th:value="${studentProfile.mobile}">
                         </div>
-                    </div>
+                        </div>
+                        </div>
+                    </details>
 
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+                    <details class="profile-section">
+                        <summary>
+                            <span><i class="ti ti-user-circle" aria-hidden="true"></i> Demographics</span>
+                            <span class="profile-chevron"><i class="ti ti-chevron-right" aria-hidden="true"></i></span>
+                        </summary>
+                        <div class="profile-section-body">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.85rem;">
                         <div>
                             <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Sex</label>
                             <input name="sex" class="form-control" th:value="${studentProfile.sex}">
@@ -370,9 +436,17 @@
                             <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Citizenship</label>
                             <input name="citizenship" class="form-control" th:value="${studentProfile.citizenship}">
                         </div>
-                    </div>
+                        </div>
+                        </div>
+                    </details>
 
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+                    <details class="profile-section">
+                        <summary>
+                            <span><i class="ti ti-map-pin" aria-hidden="true"></i> Address</span>
+                            <span class="profile-chevron"><i class="ti ti-chevron-right" aria-hidden="true"></i></span>
+                        </summary>
+                        <div class="profile-section-body">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.85rem;">
                         <div>
                             <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Place of Birth</label>
                             <input name="place_of_birth" class="form-control" th:value="${studentProfile.place_of_birth}">
@@ -394,8 +468,16 @@
                             <input name="street" class="form-control" th:value="${studentProfile.street}">
                         </div>
                     </div>
+                        </div>
+                    </details>
 
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+                    <details class="profile-section">
+                        <summary>
+                            <span><i class="ti ti-phone" aria-hidden="true"></i> Emergency &amp; Guardian</span>
+                            <span class="profile-chevron"><i class="ti ti-chevron-right" aria-hidden="true"></i></span>
+                        </summary>
+                        <div class="profile-section-body">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem;">
                         <div>
                             <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Emergency Contact</label>
                             <input name="emergency_contact_name" class="form-control" th:value="${studentProfile.emergency_contact_name}">
@@ -421,8 +503,16 @@
                             <input name="guardian_relationship" class="form-control" th:value="${studentProfile.guardian_relationship}">
                         </div>
                     </div>
+                        </div>
+                    </details>
 
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+                    <details class="profile-section">
+                        <summary>
+                            <span><i class="ti ti-users" aria-hidden="true"></i> Parents</span>
+                            <span class="profile-chevron"><i class="ti ti-chevron-right" aria-hidden="true"></i></span>
+                        </summary>
+                        <div class="profile-section-body">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem;">
                         <div>
                             <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Father Name</label>
                             <input name="father_name" class="form-control" th:value="${studentProfile.father_name}">
@@ -456,8 +546,16 @@
                             <input name="mother_address" class="form-control" th:value="${studentProfile.mother_address}">
                         </div>
                     </div>
+                        </div>
+                    </details>
 
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+                    <details class="profile-section">
+                        <summary>
+                            <span><i class="ti ti-school" aria-hidden="true"></i> Education History</span>
+                            <span class="profile-chevron"><i class="ti ti-chevron-right" aria-hidden="true"></i></span>
+                        </summary>
+                        <div class="profile-section-body">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem;">
                         <div>
                             <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Elementary School</label>
                             <input name="elementary_school" class="form-control" th:value="${studentProfile.elementary_school}">
@@ -510,16 +608,18 @@
                             <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Senior High Address</label>
                             <input name="shs_address" class="form-control" th:value="${studentProfile.shs_address}">
                         </div>
-                    </div>
+                        </div>
+                        </div>
+                    </details>
 
-                    <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+                    <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
                         <button type="submit" class="btn btn-primary" style="background: #0F766E; border-color: #0F766E;"
                                 onclick="return confirm('Save these registrar profile changes?');">
                             <i class="ti ti-device-floppy" aria-hidden="true"></i> Save Profile
                         </button>
                     </div>
                 </form>
-            </div>
+            </details>
 
             <!-- Detailed Content Grid -->
             <div th:if="${student != null}" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; align-items: start;">
@@ -708,86 +808,6 @@
                                     </tr>
                                 </tbody>
                             </table>
-                        </div>
-                    </div>
-
-                    <!-- TOR / Transfer Credit Workspace -->
-                    <div class="card" th:if="${student != null}" style="border-left: 4px solid #F59E0B;">
-                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                            <h5 class="card-title" style="margin: 0; color: #B45309;"><i class="ti ti-list-check" aria-hidden="true"></i> TOR &amp; Transfer Crediting</h5>
-                            <span th:if="${shiftCarryOver != null}" style="font-size: 0.75rem; color: var(--text-muted);">
-                                <span th:text="${shiftCarryOver.carriedOverCount}"></span> carried ·
-                                <span th:text="${shiftCarryOver.deficiencyCount}"></span> required ·
-                                <span th:text="${shiftCarryOver.orphanCount}"></span> orphan
-                            </span>
-                        </div>
-
-                        <div th:if="${shiftCarryOver != null and shiftCarryOver.carriedOverCount > 0}" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
-                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">CARRIED OVER (passed + in assigned curriculum)</div>
-                            <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
-                                <span th:each="c : ${shiftCarryOver.carriedOver}" class="sched-tag" th:text="${c.course_code}"></span>
-                            </div>
-                        </div>
-
-                        <div th:if="${shiftCarryOver != null and shiftCarryOver.orphanCount > 0}" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
-                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">ORPHAN PASSED (not in assigned curriculum)</div>
-                            <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
-                                <span th:each="o : ${shiftCarryOver.orphanCredits}" class="sched-tag" style="border-color: #FCA5A5;" th:text="${o.course_code}"></span>
-                            </div>
-                        </div>
-
-                        <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
-                            <form th:action="@{/admin/student-manager/bulk-credit}" method="post">
-                                <input type="hidden" name="studentNumber" th:value="${student.username}">
-                                <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">BULK TOR CSV</label>
-                                <textarea name="bulkCreditCsv" class="form-control" rows="4" placeholder="course_code,numeric_grade,source_school,note&#10;AECO 11,1.75,Prior College,TOR 2024&#10;MATH 101,2.0,," style="font-size: 0.8rem; font-family: monospace; margin-bottom: 0.5rem;"></textarea>
-                                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <input type="text" name="defaultSourceSchool" placeholder="Default prior school" class="form-control" style="font-size: 0.8rem; max-width: 220px;">
-                                    <button type="submit" class="btn btn-primary" style="background: #F59E0B; border-color: #F59E0B; white-space: nowrap;">Import bulk credits</button>
-                                </div>
-                            </form>
-                            <div th:if="${bulkCreditLines != null}" style="margin-top: 0.75rem; font-size: 0.78rem; max-height: 120px; overflow-y: auto;">
-                                <div th:each="line : ${bulkCreditLines}" th:style="${line.ok} ? 'color: var(--success-color);' : 'color: #DC2626;'" th:text="${line.courseCode + ': ' + line.detail}"></div>
-                            </div>
-                        </div>
-
-                        <div th:if="${curriculumDeficiencies != null and !#lists.isEmpty(curriculumDeficiencies)}" style="max-height: 320px; overflow-x: auto; overflow-y: auto;">
-                            <table class="table-eac" style="margin: 0; min-width: 640px; table-layout: fixed;">
-                                <thead style="background: var(--bg-tertiary); position: sticky; top: 0;">
-                                    <tr>
-                                        <th style="width: 36px;">Yr</th>
-                                        <th style="width: 36px;">Sem</th>
-                                        <th style="width: 88px;">Code</th>
-                                        <th style="width: 140px;">Title</th>
-                                        <th style="width: 44px;">Units</th>
-                                        <th style="width: 260px;">Credit</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr th:each="d : ${curriculumDeficiencies}">
-                                        <td th:text="${d.year_level}" style="white-space: nowrap;"></td>
-                                        <td th:text="${d.semester_number}" style="white-space: nowrap;"></td>
-                                        <td style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:text="${d.course_code}" th:title="${d.course_code}"></td>
-                                        <td style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:text="${d.course_title}" th:title="${d.course_title}"></td>
-                                        <td th:text="${d.credit_units}" style="white-space: nowrap;"></td>
-                                        <td>
-                                            <form th:action="@{/admin/student-manager/credit-grade}" method="post" style="display: flex; flex-wrap: nowrap; gap: 0.35rem; margin: 0; align-items: center;">
-                                                <input type="hidden" name="studentNumber" th:value="${student.username}">
-                                                <input type="hidden" name="courseId" th:value="${d.course_id}">
-                                                <input type="text" name="sourceSchool" placeholder="Prior school" class="form-control" style="font-size: 0.75rem; padding: 0.2rem 0.4rem; width: 100px; min-width: 100px;">
-                                                <input type="number" name="numericGrade" step="0.01" min="1" max="5" placeholder="Grade" class="form-control" style="font-size: 0.75rem; padding: 0.2rem 0.4rem; width: 64px; min-width: 64px;">
-                                                <button type="submit" class="btn btn-primary" style="padding: 0.2rem 0.45rem; font-size: 0.75rem; background: #F59E0B; border-color: #F59E0B; white-space: nowrap;">Credit</button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div th:if="${curriculumDeficiencies == null or #lists.isEmpty(curriculumDeficiencies)}" style="padding: 1rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
-                            No curriculum deficiencies — assigned catalog is fully credited/passed.
-                        </div>
-                        <div style="padding: 0.75rem 1rem; font-size: 0.8rem; color: var(--text-muted); border-top: 1px solid var(--border-color);">
-                            Credit prior-school/TOR rows here or via bulk CSV. Credited courses count as passed for prerequisites and irregular enrollment.
                         </div>
                     </div>
 

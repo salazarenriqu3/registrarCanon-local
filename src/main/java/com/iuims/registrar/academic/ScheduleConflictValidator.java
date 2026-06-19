@@ -53,7 +53,7 @@ public final class ScheduleConflictValidator {
 
         if (facultyId != null) {
             List<Map<String, Object>> facultyConflicts = db.queryForList(
-                overlapSql + "AND cs.faculty_id = ? LIMIT 1",
+                overlapSql + "AND COALESCE(sch.faculty_id, cs.faculty_id) = ? LIMIT 1",
                 termId, dayOfWeek, endTime, startTime, facultyId);
             if (!facultyConflicts.isEmpty()) {
                 return "Faculty is already assigned to section " + sectionCode(facultyConflicts.get(0))
@@ -73,9 +73,10 @@ public final class ScheduleConflictValidator {
             List<Map<String, Object>> conflicts = db.queryForList(
                 "SELECT other.section_code FROM class_schedules sch " +
                 "JOIN class_sections other ON other.section_id = sch.section_id " +
-                "WHERE other.term_id = ? AND other.faculty_id = ? AND other.section_id <> ? " +
+                "WHERE other.term_id = ? AND other.section_id <> ? " +
+                "AND COALESCE(sch.faculty_id, other.faculty_id) = ? " +
                 "AND sch.day_of_week = ? AND sch.start_time < ? AND sch.end_time > ? LIMIT 1",
-                slot.get("term_id"), facultyId, sectionId, slot.get("day_of_week"),
+                slot.get("term_id"), sectionId, facultyId, slot.get("day_of_week"),
                 slot.get("end_time"), slot.get("start_time"));
             if (!conflicts.isEmpty()) {
                 return "Faculty is already assigned to section " + sectionCode(conflicts.get(0))

@@ -6,14 +6,7 @@ import com.iuims.registrar.admission.FinanceAdmissionService;
 import com.iuims.registrar.curriculum.CurriculumSeederService;
 import com.iuims.registrar.curriculum.StudentCurriculumService;
 import com.iuims.registrar.core.EnlistmentSchemaService;
-import com.iuims.registrar.faculty.FacultyLoadService;
-import com.iuims.registrar.scholarship.ScholarEnrollmentService;
-import com.iuims.registrar.finance.TermFeeAdminService;
-import com.iuims.registrar.core.DatabaseSetupService;
-import com.iuims.registrar.jaypee.JaypeeIntegrationService;
-import com.iuims.registrar.core.PolicySettings;
-import com.iuims.registrar.core.SqlGenerator;
-
+import com.iuims.registrar.academic.SectionSchedulingService;
 import com.iuims.registrar.faculty.FacultyLoadService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +22,9 @@ public class FacultyLoadController {
 
     @Autowired
     private FacultyLoadService loadService;
+
+    @Autowired
+    private SectionSchedulingService sectionSchedulingService;
 
     // ------------------------------------------------------------------
     // Dashboard page
@@ -91,29 +87,16 @@ public class FacultyLoadController {
         if (session.getAttribute("currentUser") == null)
             return Map.of("success", false, "error", "Unauthorized");
 
-        boolean wouldOverload = loadService.wouldExceedUnitCap(facultyId, termId, sectionId);
-        if (wouldOverload) {
-            Map<String, Object> summary = loadService.getFacultyLoadSummary(facultyId, termId);
-            return Map.of(
-                "success", false,
-                "overload", true,
-                "message", "Assignment would exceed faculty unit cap (" +
-                           summary.get("total_load_units") + "/" + summary.get("max_teaching_units") + " units)"
-            );
+        String result = sectionSchedulingService.assignFaculty(sectionId, facultyId);
+        if ("SUCCESS".equals(result)) {
+            return Map.of("success", true, "message", "Faculty assigned successfully.");
         }
-
-        // Perform assignment
-        try {
-            // Update class_sections faculty assignment
-            int rows = loadService.assignFacultyToSection(sectionId, facultyId);
-            if (rows > 0) {
-                return Map.of("success", true, "message", "Faculty assigned successfully.");
-            } else {
-                return Map.of("success", false, "message", "Section not found.");
-            }
-        } catch (Exception e) {
-            return Map.of("success", false, "error", e.getMessage());
-        }
+        boolean overload = result.contains("unit cap");
+        return Map.of(
+            "success", false,
+            "overload", overload,
+            "message", result.startsWith("ERROR: ") ? result.substring(7) : result
+        );
     }
 }
 

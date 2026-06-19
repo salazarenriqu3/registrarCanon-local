@@ -173,6 +173,7 @@ public class StudentDocumentTrailService {
         rows.addAll(fetchStoredEvents(query, eventType, documentType, fromDate, toDate));
         rows.addAll(fetchRegFormEvents(query, eventType, documentType, fromDate, toDate));
         rows.addAll(fetchAdmissionEvents(query, eventType, documentType, fromDate, toDate));
+        rows.addAll(fetchApplicationLogEvents(query, eventType, documentType, fromDate, toDate));
         rows.addAll(fetchWithdrawalEvents(query, eventType, documentType, fromDate, toDate));
         rows.addAll(fetchGradeChangeEvents(query, eventType, documentType, fromDate, toDate));
         return rows;
@@ -280,6 +281,81 @@ public class StudentDocumentTrailService {
             "ref_no", "action", "remarks", "performed_by");
         sql.append(" ORDER BY log_timestamp DESC, log_id DESC");
         return db.queryForList(sql.toString(), args.toArray());
+    }
+
+    /**
+     * Admission {@code application_logs} — document uploads, verifications, status changes
+     * (newer audit table; complements legacy {@code eac_application_logs}).
+     */
+    private List<Map<String, Object>> fetchApplicationLogEvents(String query,
+                                                                String eventType,
+                                                                String documentType,
+                                                                LocalDate fromDate,
+                                                                LocalDate toDate) {
+        if (!tableExists("application_logs") || !tableExists("applicants")) {
+            return List.of();
+        }
+        StringBuilder sql = new StringBuilder("""
+            SELECT al.id AS event_id,
+                   su.student_number AS student_number,
+                   a.reference_number AS reference_number,
+                   'APPLICATION' AS document_scope,
+                   CASE
+                       WHEN UPPER(TRIM(COALESCE(al.action, ''))) LIKE 'DOC %' THEN 'ADMISSION_DOCUMENT'
+                       WHEN UPPER(TRIM(COALESCE(al.action, ''))) IN ('SUBMITTED', 'REVISED', 'EMAIL_VERIFIED', 'SELF-CORRECTION')
+                           THEN 'ADMISSION_APPLICATION'
+                       ELSE 'ADMISSION'
+                   END AS document_type,
+                   al.action AS event_type,
+                   COALESCE(NULLIF(TRIM(al.remarks), ''), al.action) AS event_summary,
+                   TRIM(BOTH ' | ' FROM CONCAT_WS(' | ',
+                       NULLIF(TRIM(al.source_page), ''),
+                       CASE WHEN al.old_value IS NOT NULL AND TRIM(al.old_value) <> ''
+                           THEN CONCAT('From: ', al.old_value) END,
+                       CASE WHEN al.new_value IS NOT NULL AND TRIM(al.new_value) <> ''
+                           THEN CONCAT('To: ', al.new_value) END)) AS event_details,
+                   al.performed_by AS actor,
+                   NULL AS related_request_id,
+                   'application_logs' AS source_table,
+                   CAST(al.id AS CHAR) AS source_id,
+                   al.timestamp AS created_at
+            FROM application_logs al
+            JOIN applicants a ON a.id = al.applicant_id
+            LEFT JOIN students su ON su.reference_number = a.reference_number
+            WHERE 1 = 1
+            """);
+        List<Object> args = new ArrayList<>();
+        appendFilters(sql, args, query, eventType, documentType, fromDate, toDate,
+            "al.action",
+            """
+            CASE
+                WHEN UPPER(TRIM(COALESCE(al.action, ''))) LIKE 'DOC %' THEN 'ADMISSION_DOCUMENT'
+                WHEN UPPER(TRIM(COALESCE(al.action, ''))) IN ('SUBMITTED', 'REVISED', 'EMAIL_VERIFIED', 'SELF-CORRECTION')
+                    THEN 'ADMISSION_APPLICATION'
+                ELSE 'ADMISSION'
+            END
+            """,
+            "al.timestamp",
+            "su.student_number", "a.reference_number", "al.action", "al.remarks",
+            "al.performed_by", "al.source_page", "al.old_value", "al.new_value");
+        sql.append(" ORDER BY al.timestamp DESC, al.id DESC");
+        try {
+            return db.queryForList(sql.toString(), args.toArray());
+        } catch (Exception ex) {
+            return List.of();
+        }
+    }
+
+    private boolean tableExists(String tableName) {
+        try {
+            Integer count = db.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.TABLES "
+                    + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?",
+                Integer.class, tableName);
+            return count != null && count > 0;
+        } catch (Exception ex) {
+            return false;
+        }
     }
 
     private List<Map<String, Object>> fetchWithdrawalEvents(String query,

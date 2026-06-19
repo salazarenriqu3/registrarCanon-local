@@ -384,6 +384,42 @@
             justify-content: flex-end;
             gap: 1rem;
         }
+        .new-curriculum-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+        .new-curriculum-card {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: .75rem;
+        }
+        .new-curriculum-card h5 {
+            margin: 0;
+            font-size: .98rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+        .new-curriculum-card p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: .88rem;
+            line-height: 1.45;
+        }
+        .new-curriculum-card form {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: .7rem;
+        }
+        .new-curriculum-card .form-control,
+        .new-curriculum-card .btn {
+            width: 100%;
+        }
     </style>
     <script th:inline="javascript">
         const ctx = /*[[@{/}]]*/ '/';
@@ -413,31 +449,36 @@
                     <h1 class="page-title">Curriculum Management</h1>
                     <p class="page-subtitle" th:text="'Manage academic programs and course requisites. Rows shown: ' + ${#lists.size(programs)}"></p>
                 </div>
-                <details th:unless="${courses != null}" style="position:relative;">
-                    <summary class="btn btn-outline" style="list-style:none; cursor:pointer;"><i class="ti ti-settings"></i> Import &amp; Maintenance</summary>
-                    <div class="card" style="position:absolute; right:0; z-index:20; width:320px; padding:1rem; display:grid; gap:.65rem; margin-top:.5rem;" title="Import and recovery tools; normal curriculum work starts with New Curriculum Draft below.">
-                    <button class="btn btn-outline" onclick="document.getElementById('uploadModal').classList.add('show')">
-                        <i class="ti ti-upload" aria-hidden="true"></i> Import .docx
+                <div th:unless="${courses != null}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                    <button type="button" class="btn btn-primary" onclick="openUploadModal()">
+                        <i class="ti ti-upload" aria-hidden="true"></i> Upload from Document
                     </button>
-                    <form th:action="@{/admin/curriculum/seed-all}" method="post" id="seedAllForm">
-                        <button type="submit" class="btn btn-primary" onclick="showSpinner('Publishing manifest-approved curriculums…')">
-                            <i class="ti ti-refresh" aria-hidden="true"></i> Import Approved Manifest
-                        </button>
-                    </form>
-                    <form th:action="@{/admin/curriculum/repair-readiness}" method="post" id="repairReadinessForm">
-                        <button type="submit" class="btn btn-outline" onclick="showSpinner('Repairing curriculum readiness…')">
-                            <i class="ti ti-tool" aria-hidden="true"></i> Repair Missing Drafts
-                        </button>
-                    </form>
-                    <form th:action="@{/admin/curriculum/normalize-active}" method="post" id="normalizeActiveForm">
-                        <button type="submit" class="btn btn-outline"
-                                onclick="return confirm('Archive duplicate active curricula and keep one current active curriculum per program? Existing student curriculum assignments will be preserved.') && showSpinner('Normalizing active curricula...')">
-                            <i class="ti ti-archive" aria-hidden="true"></i> Repair Active Versions
-                        </button>
-                    </form>
-                        <small style="color:var(--text-muted);">Recovery tools are separate from the normal create, edit, and publish workflow.</small>
-                    </div>
-                </details>
+                    <button type="button" class="btn btn-outline" onclick="openCurriculumStartModal()">
+                        <i class="ti ti-file-plus" aria-hidden="true"></i> Start New Curriculum
+                    </button>
+                    <details style="position:relative;">
+                        <summary class="btn btn-outline" style="list-style:none; cursor:pointer;"><i class="ti ti-settings"></i> Import &amp; Maintenance</summary>
+                        <div class="card" style="position:absolute; right:0; z-index:20; width:320px; padding:1rem; display:grid; gap:.65rem; margin-top:.5rem;">
+                            <form th:action="@{/admin/curriculum/seed-all}" method="post" id="seedAllForm">
+                                <button type="submit" class="btn btn-outline" onclick="showSpinner('Publishing manifest-approved curriculums…')">
+                                    <i class="ti ti-refresh" aria-hidden="true"></i> Import Approved Manifest
+                                </button>
+                            </form>
+                            <form th:action="@{/admin/curriculum/repair-readiness}" method="post" id="repairReadinessForm">
+                                <button type="submit" class="btn btn-outline" onclick="showSpinner('Repairing curriculum readiness…')">
+                                    <i class="ti ti-tool" aria-hidden="true"></i> Repair Missing Drafts
+                                </button>
+                            </form>
+                            <form th:action="@{/admin/curriculum/normalize-active}" method="post" id="normalizeActiveForm">
+                                <button type="submit" class="btn btn-outline"
+                                        onclick="return confirm('Archive duplicate active curricula and keep one current active curriculum per program? Existing student curriculum assignments will be preserved.') && showSpinner('Normalizing active curricula...')">
+                                    <i class="ti ti-archive" aria-hidden="true"></i> Repair Active Versions
+                                </button>
+                            </form>
+                            <small style="color:var(--text-muted);">Recovery tools are separate from the normal create, edit, and publish workflow.</small>
+                        </div>
+                    </details>
+                </div>
             </div>
 
             <div class="curriculum-toolbar" th:unless="${courses != null}">
@@ -458,21 +499,16 @@
                     </select>
                     <button type="submit" class="btn btn-outline"><i class="ti ti-filter"></i> Filter</button>
                 </form>
-                <form th:action="@{/admin/curriculum/placeholder}" method="post" class="curriculum-actions">
-                    <select name="programCode" class="form-control" style="min-width: 260px;" required>
-                        <option value="">Select program for new working draft</option>
-                        <option th:each="p : ${programOptions}"
-                                th:value="${p.program_code}"
-                                th:text="${p.program_code + ' - ' + p.program_name}"></option>
-                    </select>
-                    <input name="academicYear" class="form-control" style="width: 130px;" placeholder="2024-2025">
-                    <button type="submit" class="btn btn-primary" onclick="showSpinner('Creating working curriculum draft...')"><i class="ti ti-file-plus"></i> New Curriculum Draft</button>
-                </form>
+                <div class="curriculum-actions">
+                    <button type="button" class="btn btn-primary" onclick="openCurriculumStartModal()">
+                        <i class="ti ti-file-plus"></i> New Curriculum
+                    </button>
+                </div>
             </div>
 
             <div th:unless="${courses != null}" class="card" style="padding:1rem 1.25rem; margin-bottom:1.25rem; border-left:4px solid var(--primary-color);">
                 <strong>Normal workflow:</strong>
-                <span style="color:var(--text-muted);">create or clone a working draft, attach shared catalog courses and place them by year and semester, then publish it. Publishing makes that version active and archives the previous active version for the same program.</span>
+                <span style="color:var(--text-muted);">upload a .docx, or start a blank placeholder / clone an existing curriculum, attach shared catalog courses and place them by year and semester, then publish. Publishing makes that version active and archives the previous active version for the same program.</span>
             </div>
 
             <div th:unless="${courses != null}" th:if="${completionQueue != null and !#lists.isEmpty(completionQueue)}" class="completion-workspace">
@@ -755,25 +791,20 @@
                                     <a th:if="${p.curriculum_id != null}" th:href="@{/admin/curriculum/export/{id}(id=${p.curriculum_id})}" class="btn btn-outline" style="padding: 0.35rem 0.65rem;">
                                         <i class="ti ti-download"></i> Export
                                     </a>
-                                    <form th:if="${p.curriculum_id != null}" th:action="@{/admin/curriculum/clone}" method="post">
-                                        <input type="hidden" name="sourceCurriculumId" th:value="${p.curriculum_id}">
-                                        <input type="hidden" name="academicYear" th:value="${p.academic_year}">
-                                        <button type="submit" class="btn btn-outline" style="padding: 0.35rem 0.65rem;" onclick="showSpinner('Cloning curriculum to draft...')">
-                                            <i class="ti ti-copy"></i> Clone
-                                        </button>
-                                    </form>
+                                    <button th:if="${p.curriculum_id != null}" type="button" class="btn btn-outline" style="padding: 0.35rem 0.65rem;"
+                                            th:attr="onclick=|openCurriculumStartModal('${p.program_code}', ${p.curriculum_id}, '${p.academic_year ?: ''}')|">
+                                        <i class="ti ti-copy"></i> Clone
+                                    </button>
                                     <form th:if="${p.curriculum_id != null and (p.approval_status == 'Draft' or p.approval_status == 'Placeholder') and (p.is_active == 0 or p.course_count == 0)}" th:action="@{/admin/curriculum/delete-draft}" method="post">
                                         <input type="hidden" name="curriculumId" th:value="${p.curriculum_id}">
                                         <button type="submit" class="btn btn-outline" style="padding: 0.35rem 0.65rem;" onclick="return confirm('Delete this draft curriculum?')">
                                             <i class="ti ti-trash"></i> Delete
                                         </button>
                                     </form>
-                                    <form th:if="${p.curriculum_id == null}" th:action="@{/admin/curriculum/placeholder}" method="post">
-                                        <input type="hidden" name="programCode" th:value="${p.program_code}">
-                                        <button type="submit" class="btn btn-outline" style="padding: 0.35rem 0.65rem;" onclick="showSpinner('Creating working curriculum draft...')">
-                                            <i class="ti ti-file-plus"></i> Create Working Draft
-                                        </button>
-                                    </form>
+                                    <button th:if="${p.curriculum_id == null}" type="button" class="btn btn-outline" style="padding: 0.35rem 0.65rem;"
+                                            th:attr="onclick=|openCurriculumStartModal('${p.program_code}')|">
+                                        <i class="ti ti-file-plus"></i> Start
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -781,6 +812,108 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+</div>
+
+<!-- Start New Curriculum Modal -->
+<div id="curriculumStartModal" class="modal">
+    <div class="modal-dialog" style="max-width: 1040px;">
+        <div class="modal-header">
+            <h4 style="margin: 0; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                <i class="ti ti-file-plus" style="color: var(--primary-color);"></i> Start New Curriculum
+            </h4>
+            <button class="btn btn-outline" style="border: none; padding: 0.5rem;" onclick="closeCurriculumStartModal()">
+                <i class="ti ti-x" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p style="margin-top: 0; color: var(--text-muted);">
+                Choose how you want to start the curriculum. You can build a blank placeholder, clone an existing curriculum, or upload a .docx file.
+            </p>
+            <div class="new-curriculum-grid">
+                <div class="new-curriculum-card">
+                    <h5>Blank placeholder</h5>
+                    <p>Create a clean curriculum shell and set the academic year before adding course rows.</p>
+                    <form th:action="@{/admin/curriculum/placeholder}" method="post"
+                          onsubmit="return prepareAcademicYearField('startPlaceholderAcademicYearSelect', 'startPlaceholderAcademicYearCustom', 'startPlaceholderAcademicYear')">
+                        <div>
+                            <label class="form-label">Program</label>
+                            <select name="programCode" id="startPlaceholderProgramCode" class="form-control" required>
+                                <option value="">Select a program</option>
+                                <option th:each="p : ${programOptions}"
+                                        th:value="${p.program_code}"
+                                        th:text="${p.program_code + ' - ' + p.program_name}"></option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Academic year</label>
+                            <select id="startPlaceholderAcademicYearSelect" class="form-control"
+                                    onchange="syncAcademicYearPicker('startPlaceholderAcademicYearSelect', 'startPlaceholderAcademicYearCustom', 'startPlaceholderAcademicYear')">
+                                <option value="">Use current system academic year</option>
+                                <option th:each="year : ${academicYearOptions}" th:value="${year}" th:text="${year}"></option>
+                                <option value="__custom__">Custom / Legacy year</option>
+                            </select>
+                            <input id="startPlaceholderAcademicYearCustom" class="form-control"
+                                   placeholder="e.g. 2018-2019 or 2028-2029"
+                                   style="margin-top: 0.75rem; display: none;"
+                                   oninput="syncAcademicYearPicker('startPlaceholderAcademicYearSelect', 'startPlaceholderAcademicYearCustom', 'startPlaceholderAcademicYear')">
+                            <input type="hidden" name="academicYear" id="startPlaceholderAcademicYear">
+                        </div>
+                        <button type="submit" class="btn btn-primary" onclick="showSpinner('Creating curriculum placeholder...')">
+                            <i class="ti ti-file-plus" aria-hidden="true"></i> Create placeholder
+                        </button>
+                    </form>
+                </div>
+                <div class="new-curriculum-card">
+                    <h5>Clone existing curriculum</h5>
+                    <p>Copy the course rows from a known curriculum and override the academic year if you need a new tag.</p>
+                    <form th:action="@{/admin/curriculum/clone}" method="post"
+                          onsubmit="return prepareAcademicYearField('startCloneAcademicYearSelect', 'startCloneAcademicYearCustom', 'startCloneAcademicYear')">
+                        <div>
+                            <label class="form-label">Source curriculum</label>
+                            <select name="sourceCurriculumId" id="startCloneSourceId" class="form-control" required>
+                                <option value="">Select a curriculum</option>
+                                <option th:each="c : ${curriculumChoices}"
+                                        th:value="${c.curriculum_id}"
+                                        th:text="${c.program_code + ' - ' + c.curriculum_name + ' / A.Y. ' + c.academic_year + ' / v' + c.version_number + ' / ' + c.approval_status}"></option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Academic year</label>
+                            <select id="startCloneAcademicYearSelect" class="form-control"
+                                    onchange="syncAcademicYearPicker('startCloneAcademicYearSelect', 'startCloneAcademicYearCustom', 'startCloneAcademicYear')">
+                                <option value="">Use source curriculum academic year</option>
+                                <option th:each="year : ${academicYearOptions}" th:value="${year}" th:text="${year}"></option>
+                                <option value="__custom__">Custom / Legacy year</option>
+                            </select>
+                            <input id="startCloneAcademicYearCustom" class="form-control"
+                                   placeholder="e.g. 2018-2019 or 2028-2029"
+                                   style="margin-top: 0.75rem; display: none;"
+                                   oninput="syncAcademicYearPicker('startCloneAcademicYearSelect', 'startCloneAcademicYearCustom', 'startCloneAcademicYear')">
+                            <input type="hidden" name="academicYear" id="startCloneAcademicYear">
+                        </div>
+                        <div>
+                            <label class="form-label">Draft name <span style="font-weight: 400; color: var(--text-muted);">(optional)</span></label>
+                            <input name="curriculumName" class="form-control" placeholder="Leave blank to auto-name the draft">
+                        </div>
+                        <button type="submit" class="btn btn-outline" onclick="showSpinner('Cloning curriculum to draft...')">
+                            <i class="ti ti-copy" aria-hidden="true"></i> Clone draft
+                        </button>
+                    </form>
+                </div>
+                <div class="new-curriculum-card">
+                    <h5>Upload .docx</h5>
+                    <p>Open the parser for an official curriculum file. You can preview the rows before saving.</p>
+                    <button type="button" class="btn btn-primary" onclick="openUploadModalFromChooser()">
+                        <i class="ti ti-upload" aria-hidden="true"></i> Open upload parser
+                    </button>
+                    <p style="font-size: .82rem;">The upload dialog also lets you override the academic year when needed.</p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeCurriculumStartModal()">Close</button>
         </div>
     </div>
 </div>
@@ -842,6 +975,23 @@
                 </select>
             </div>
 
+            <div style="margin-top: 1.5rem;">
+                <label class="form-label">Academic Year <span style="font-weight: 400; color: var(--text-muted);">(optional override)</span></label>
+                <select id="academicYearSelect" class="form-control"
+                        onchange="syncAcademicYearPicker('academicYearSelect', 'academicYearCustom')">
+                    <option value="">Use detected or current system academic year</option>
+                    <option th:each="year : ${academicYearOptions}" th:value="${year}" th:text="${year}"></option>
+                    <option value="__custom__">Custom / Legacy year</option>
+                </select>
+                <input id="academicYearCustom" class="form-control"
+                       placeholder="e.g. 2018-2019 or 2028-2029"
+                       style="margin-top: 0.75rem; display: none;"
+                       oninput="syncAcademicYearPicker('academicYearSelect', 'academicYearCustom')">
+                <p style="margin: .4rem 0 0; font-size: .82rem; color: var(--text-muted);">
+                    Leave this blank to use the academic year detected from the document or the current system term.
+                </p>
+            </div>
+
             <!-- Preview table (populated by AJAX) -->
             <div id="previewTable">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
@@ -872,6 +1022,7 @@
                 <input type="file" name="file" id="hiddenFileInput" style="display: none;" accept=".docx">
                 <input type="hidden" name="schoolName" id="hiddenSchoolName">
                 <input type="hidden" name="programCode" id="hiddenProgramCode">
+                <input type="hidden" name="academicYear" id="hiddenAcademicYear">
                 <button type="button" id="confirmSeedBtn" class="btn btn-primary" disabled onclick="confirmSeed()">
                     <i class="ti ti-device-floppy" aria-hidden="true"></i> Confirm & Save
                 </button>
@@ -888,6 +1039,128 @@
 </div>
 
 <script>
+    function resolveAcademicYearPicker(selectId, customId) {
+        const select = document.getElementById(selectId);
+        if (!select) {
+            return '';
+        }
+        if (select.value === '__custom__') {
+            const custom = document.getElementById(customId);
+            return custom ? custom.value.trim() : '';
+        }
+        return (select.value || '').trim();
+    }
+
+    function syncAcademicYearPicker(selectId, customId, hiddenId) {
+        const select = document.getElementById(selectId);
+        const custom = document.getElementById(customId);
+        const useCustom = !!select && select.value === '__custom__';
+        if (custom) {
+            custom.style.display = useCustom ? 'block' : 'none';
+            if (!useCustom) {
+                custom.value = '';
+            }
+        }
+        if (hiddenId) {
+            const hidden = document.getElementById(hiddenId);
+            if (hidden) {
+                hidden.value = resolveAcademicYearPicker(selectId, customId);
+            }
+        }
+    }
+
+    function setAcademicYearPicker(selectId, customId, value, hiddenId) {
+        const select = document.getElementById(selectId);
+        const custom = document.getElementById(customId);
+        if (!select) {
+            return;
+        }
+        const normalized = (value || '').trim();
+        const hasKnownOption = normalized && Array.from(select.options).some(option => option.value === normalized);
+        if (!normalized) {
+            select.value = '';
+            if (custom) {
+                custom.value = '';
+            }
+            syncAcademicYearPicker(selectId, customId, hiddenId);
+            return;
+        }
+        if (hasKnownOption) {
+            select.value = normalized;
+            if (custom) {
+                custom.value = '';
+            }
+            syncAcademicYearPicker(selectId, customId, hiddenId);
+            return;
+        }
+        select.value = '__custom__';
+        if (custom) {
+            custom.value = normalized;
+        }
+        syncAcademicYearPicker(selectId, customId, hiddenId);
+    }
+
+    function prepareAcademicYearField(selectId, customId, hiddenId) {
+        syncAcademicYearPicker(selectId, customId, hiddenId);
+        return true;
+    }
+
+    function openCurriculumStartModal(programCode, sourceCurriculumId, academicYear) {
+        const modal = document.getElementById('curriculumStartModal');
+        if (!modal) return;
+        modal.classList.add('show');
+        const placeholderProgram = document.getElementById('startPlaceholderProgramCode');
+        const cloneSource = document.getElementById('startCloneSourceId');
+        if (placeholderProgram) {
+            placeholderProgram.value = programCode || '';
+        }
+        if (cloneSource) {
+            cloneSource.value = sourceCurriculumId ? String(sourceCurriculumId) : '';
+        }
+        setAcademicYearPicker('startPlaceholderAcademicYearSelect', 'startPlaceholderAcademicYearCustom', academicYear, 'startPlaceholderAcademicYear');
+        setAcademicYearPicker('startCloneAcademicYearSelect', 'startCloneAcademicYearCustom', academicYear, 'startCloneAcademicYear');
+    }
+
+    function closeCurriculumStartModal() {
+        const modal = document.getElementById('curriculumStartModal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    }
+
+    function openUploadModal(programCode, academicYear) {
+        const modal = document.getElementById('uploadModal');
+        if (!modal) return;
+        modal.classList.add('show');
+        const programSelect = document.getElementById('programCodeSelect');
+        selectedFile = null;
+        const docxInput = document.getElementById('docxFileInput');
+        const hiddenFileInput = document.getElementById('hiddenFileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const previewTable = document.getElementById('previewTable');
+        const confirmBtn = document.getElementById('confirmSeedBtn');
+        const previewBtn = document.getElementById('previewBtn');
+        if (docxInput) docxInput.value = '';
+        if (hiddenFileInput) hiddenFileInput.value = '';
+        if (fileInfo) fileInfo.style.display = 'none';
+        if (previewTable) previewTable.style.display = 'none';
+        if (previewBtn) previewBtn.disabled = true;
+        if (confirmBtn) confirmBtn.disabled = true;
+        if (programSelect) {
+            programSelect.value = programCode || '';
+        }
+        setAcademicYearPicker('academicYearSelect', 'academicYearCustom', academicYear);
+    }
+
+    function openUploadModalFromChooser() {
+        const placeholderProgram = document.getElementById('startPlaceholderProgramCode');
+        openUploadModal(
+            placeholderProgram ? placeholderProgram.value : '',
+            resolveAcademicYearPicker('startPlaceholderAcademicYearSelect', 'startPlaceholderAcademicYearCustom')
+        );
+        closeCurriculumStartModal();
+    }
+
     function closeModal() {
         document.getElementById('uploadModal').classList.remove('show');
     }
@@ -933,6 +1206,7 @@
         fd.append('file', selectedFile);
         fd.append('schoolName', document.getElementById('schoolNameSelect').value);
         fd.append('programCode', document.getElementById('programCodeSelect').value);
+        fd.append('academicYear', resolveAcademicYearPicker('academicYearSelect', 'academicYearCustom'));
 
         try {
             const resp = await fetch(ctx + 'admin/curriculum/preview', {
@@ -988,6 +1262,7 @@
         document.getElementById('hiddenFileInput').files = dt.files;
         document.getElementById('hiddenSchoolName').value = document.getElementById('schoolNameSelect').value;
         document.getElementById('hiddenProgramCode').value = programCode;
+        document.getElementById('hiddenAcademicYear').value = resolveAcademicYearPicker('academicYearSelect', 'academicYearCustom');
         showSpinner('Saving curriculum to database…');
         document.getElementById('uploadForm').submit();
     }

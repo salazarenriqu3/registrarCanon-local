@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="${documentLabel} + ' — Print'">Admission Document</title>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; background: #f3f4f6; }
+        .toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1rem;
+            background: #fff;
+            border-bottom: 1px solid #ddd;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .toolbar button, .toolbar a {
+            font-size: 0.9rem;
+            padding: 0.45rem 1rem;
+            border-radius: 6px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .toolbar button {
+            background: #B45309;
+            color: #fff;
+            border: none;
+            font-weight: 700;
+        }
+        .toolbar a {
+            background: #fff;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        .frame-wrap {
+            max-width: 900px;
+            margin: 1rem auto;
+            background: #fff;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            min-height: calc(100vh - 80px);
+        }
+        .frame-wrap iframe,
+        .frame-wrap img {
+            display: block;
+            width: 100%;
+            min-height: calc(100vh - 80px);
+            border: 0;
+        }
+        .frame-wrap img {
+            object-fit: contain;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        @media print {
+            body { background: #fff; }
+            .toolbar { display: none !important; }
+            .frame-wrap {
+                box-shadow: none;
+                margin: 0;
+                max-width: none;
+                min-height: auto;
+            }
+            .frame-wrap iframe {
+                min-height: 100vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar no-print">
+        <button type="button" onclick="printDocument()">Print Document</button>
+        <a th:href="@{/admin/student-manager(username=${studentNumber})}">Back to Student Profile</a>
+    </div>
+
+    <div class="frame-wrap">
+        <iframe th:if="${isPdf}"
+                th:src="@{/admin/student-manager/admission-document(studentNumber=${studentNumber},documentKey=${documentKey})}"
+                title="Admission document preview"></iframe>
+        <img th:if="${!isPdf}"
+             th:src="@{/admin/student-manager/admission-document(studentNumber=${studentNumber},documentKey=${documentKey})}"
+             th:alt="${documentLabel}"
+             alt="Admission document"/>
+    </div>
+
+    <script th:inline="javascript">
+        function printDocument() {
+            window.print();
+        }
+    </script>
+</body>
+</html>

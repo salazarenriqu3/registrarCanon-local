@@ -1,5 +1,6 @@
 package com.iuims.registrar.core;
 
+import com.iuims.registrar.academic.SchedulingPolicyConstants;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,8 +15,10 @@ public class YearLevelLoadPolicyService {
 
     public static final int FIRST_YEAR_LEVEL = 1;
     public static final int LAST_YEAR_LEVEL = 4;
-    private static final BigDecimal DEFAULT_MIN_UNITS = BigDecimal.ZERO;
-    private static final BigDecimal DEFAULT_MAX_UNITS = new BigDecimal("27");
+    private static final BigDecimal DEFAULT_MIN_UNITS =
+        BigDecimal.valueOf(SchedulingPolicyConstants.DEFAULT_STUDENT_MIN_UNITS);
+    private static final BigDecimal DEFAULT_MAX_UNITS =
+        BigDecimal.valueOf(SchedulingPolicyConstants.DEFAULT_STUDENT_MAX_UNITS);
     private static final BigDecimal ABSOLUTE_MAX_UNITS = new BigDecimal("60");
 
     private final JdbcTemplate db;
@@ -30,11 +33,10 @@ public class YearLevelLoadPolicyService {
         db.execute(
             "CREATE TABLE IF NOT EXISTS year_level_load_policies (" +
                 "year_level TINYINT NOT NULL PRIMARY KEY, " +
-                "minimum_units DECIMAL(5,2) NOT NULL DEFAULT 0, " +
+                "minimum_units DECIMAL(5,2) NOT NULL DEFAULT 15, " +
                 "maximum_units DECIMAL(5,2) NOT NULL DEFAULT 27, " +
                 "updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)");
 
-        BigDecimal legacyMaximum = readLegacyMaximum();
         for (int yearLevel = FIRST_YEAR_LEVEL; yearLevel <= LAST_YEAR_LEVEL; yearLevel++) {
             Integer count = db.queryForObject(
                 "SELECT COUNT(*) FROM year_level_load_policies WHERE year_level = ?",
@@ -43,9 +45,13 @@ public class YearLevelLoadPolicyService {
                 db.update(
                     "INSERT INTO year_level_load_policies " +
                         "(year_level, minimum_units, maximum_units) VALUES (?, ?, ?)",
-                    yearLevel, DEFAULT_MIN_UNITS, legacyMaximum);
+                    yearLevel, DEFAULT_MIN_UNITS, DEFAULT_MAX_UNITS);
             }
         }
+        db.update(
+            "UPDATE year_level_load_policies SET minimum_units = ?, maximum_units = ? " +
+                "WHERE year_level BETWEEN ? AND ? AND minimum_units = 0",
+            DEFAULT_MIN_UNITS, DEFAULT_MAX_UNITS, FIRST_YEAR_LEVEL, LAST_YEAR_LEVEL);
         schemaReady = true;
     }
 
@@ -117,20 +123,6 @@ public class YearLevelLoadPolicyService {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(
                 "Year " + yearLevel + " " + field + " units must be a number.");
-        }
-    }
-
-    private BigDecimal readLegacyMaximum() {
-        try {
-            String value = db.queryForObject(
-                "SELECT setting_value FROM enrollment_settings " +
-                    "WHERE setting_key = 'max_units_regular' LIMIT 1",
-                String.class);
-            BigDecimal parsed = new BigDecimal(value);
-            return parsed.compareTo(BigDecimal.ZERO) >= 0 && parsed.compareTo(ABSOLUTE_MAX_UNITS) <= 0
-                ? parsed : DEFAULT_MAX_UNITS;
-        } catch (Exception ignored) {
-            return DEFAULT_MAX_UNITS;
         }
     }
 

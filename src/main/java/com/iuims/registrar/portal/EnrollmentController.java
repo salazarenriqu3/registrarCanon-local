@@ -15,6 +15,7 @@ import com.iuims.registrar.finance.FinancePolicyService;
 import com.iuims.registrar.finance.OverpayDispositionService;
 import com.iuims.registrar.finance.TermFeeAdminService;
 import com.iuims.registrar.forms.RegFormEventService;
+import com.iuims.registrar.forms.RegistrationFormPrintService;
 import com.iuims.registrar.forms.StudentDocumentTrailService;
 import com.iuims.registrar.core.DatabaseSetupService;
 import com.iuims.registrar.jaypee.JaypeeIntegrationService;
@@ -51,6 +52,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Controller
@@ -72,6 +74,7 @@ public class EnrollmentController {
     private final StudentDocumentTrailService documentTrailService;
     private final StudentProfileService studentProfileService;
     private final ApplicantDocumentReadService applicantDocumentReadService;
+    private final RegistrationFormPrintService registrationFormPrintService;
 
     public EnrollmentController(AcademicGradingService academicService, JaypeeIntegrationService jaypeeService,
                                 FinanceAdmissionService financeService, ScholarEnrollmentService scholarEnrollmentService,
@@ -84,7 +87,8 @@ public class EnrollmentController {
                                 RegFormEventService regFormEventService,
                                 StudentDocumentTrailService documentTrailService,
                                 StudentProfileService studentProfileService,
-                                ApplicantDocumentReadService applicantDocumentReadService) {
+                                ApplicantDocumentReadService applicantDocumentReadService,
+                                RegistrationFormPrintService registrationFormPrintService) {
         this.academicService = academicService;
         this.jaypeeService = jaypeeService;
         this.financeService = financeService;
@@ -101,6 +105,7 @@ public class EnrollmentController {
         this.documentTrailService = documentTrailService;
         this.studentProfileService = studentProfileService;
         this.applicantDocumentReadService = applicantDocumentReadService;
+        this.registrationFormPrintService = registrationFormPrintService;
     }
 
 
@@ -162,12 +167,10 @@ public class EnrollmentController {
                     .filter(curr -> studentProgramCode.equalsIgnoreCase(
                         String.valueOf(curr.getOrDefault("program_code", "")).trim()))
                     .toList());
-                List<Map<String, Object>> curriculumDeficiencies =
-                    studentCurriculumService.listCurriculumDeficiencies(actualStudentNumber);
-                model.addAttribute("curriculumDeficiencies", curriculumDeficiencies);
-                model.addAttribute("curriculumDeficiencyCount", curriculumDeficiencies.size());
-                model.addAttribute("shiftCarryOver",
-                    studentCurriculumService.getShiftCarryOverSummary(actualStudentNumber));
+                List<Map<String, Object>> profileCurriculumGaps =
+                    studentCurriculumService.listProfileCurriculumGaps(actualStudentNumber);
+                model.addAttribute("curriculumDeficiencies", profileCurriculumGaps);
+                model.addAttribute("curriculumDeficiencyCount", profileCurriculumGaps.size());
                 model.addAttribute("scholarshipTypes", scholarEnrollmentService.getActiveScholarshipTypes());
                 model.addAttribute("selectedOfferingSchool", offeringSchool != null ? offeringSchool : "__DEFAULT__");
                 model.addAttribute("selectedOfferingProgram", offeringProgram != null ? offeringProgram : "__ALL__");
@@ -417,6 +420,43 @@ public class EnrollmentController {
         return "redirect:/admin/student-manager?username=" + studentNumber;
     }
 
+    @GetMapping("/admin/student-manager/admission-document/print")
+    public String printAdmissionDocument(@RequestParam String studentNumber,
+                                         @RequestParam String documentKey,
+                                         Model model,
+                                         HttpSession session) {
+        if (session.getAttribute("currentUser") == null) {
+            return "redirect:/login";
+        }
+        try {
+            Path path = applicantDocumentReadService.resolveDocumentPath(studentNumber, documentKey);
+            if (path == null || !Files.isRegularFile(path) || !Files.isReadable(path)) {
+                return "redirect:/admin/student-manager?username=" + studentNumber.trim();
+            }
+            String label = applicantDocumentReadService.resolveDocumentLabel(studentNumber, documentKey);
+            String fileName = path.getFileName().toString().toLowerCase(Locale.ROOT);
+            String contentType = Files.probeContentType(path);
+            boolean isPdf = fileName.endsWith(".pdf")
+                || (contentType != null && contentType.toLowerCase(Locale.ROOT).contains("pdf"));
+            model.addAttribute("studentNumber", studentNumber.trim());
+            model.addAttribute("documentKey", documentKey);
+            model.addAttribute("documentLabel", label);
+            model.addAttribute("isPdf", isPdf);
+            recordTrail(
+                studentNumber,
+                "ADMISSION_DOCUMENT",
+                "DOCUMENT_PRINTED",
+                "Registrar opened admission document for printing",
+                label + " (" + documentKey + ")",
+                session,
+                "student_requirement_files",
+                documentKey);
+            return "admission_document_print";
+        } catch (Exception ignored) {
+            return "redirect:/admin/student-manager?username=" + studentNumber.trim();
+        }
+    }
+
     @GetMapping("/admin/student-manager/admission-document")
     public ResponseEntity<Resource> viewAdmissionDocument(@RequestParam String studentNumber,
                                                           @RequestParam String documentKey,
@@ -434,6 +474,16 @@ public class EnrollmentController {
                 ? MediaType.parseMediaType(contentType)
                 : MediaType.APPLICATION_OCTET_STREAM;
             Resource resource = new UrlResource(path.toUri());
+            String label = applicantDocumentReadService.resolveDocumentLabel(studentNumber, documentKey);
+            recordTrail(
+                studentNumber,
+                "ADMISSION_DOCUMENT",
+                "DOCUMENT_VIEWED",
+                "Registrar viewed admission document",
+                label + " (" + documentKey + ")",
+                session,
+                "student_requirement_files",
+                documentKey);
             return ResponseEntity.ok()
                 .contentType(mediaType)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -543,7 +593,7 @@ public class EnrollmentController {
 
     @PostMapping("/admin/student-manager/credit-grade")
     public String creditTransferGrade(@RequestParam String studentNumber,
-                                      @RequestParam int courseId,
+                                      @RequestParam(required = false) Integer courseId,
                                       @RequestParam(required = false) Double numericGrade,
                                       @RequestParam(required = false) String sourceSchool,
                                       @RequestParam(required = false) String note,
@@ -551,53 +601,23 @@ public class EnrollmentController {
                                       HttpSession session) {
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
         String username = studentNumber != null ? studentNumber.trim() : "";
-        String result = creditGradeService.creditCourse(username, courseId, numericGrade, sourceSchool, note);
-        if (result.startsWith("SUCCESS:")) {
-            redir.addFlashAttribute("successMessage", result);
-            recordTrail(
-                username,
-                "TRANSFER_CREDIT",
-                "TRANSFER_CREDIT_RECORDED",
-                "Transfer/TOR credit recorded",
-                "Course #" + courseId + (sourceSchool != null && !sourceSchool.isBlank() ? " from " + sourceSchool.trim() : "") +
-                    (numericGrade != null ? " | numeric=" + numericGrade : "") +
-                    (note != null && !note.isBlank() ? " | " + note.trim() : ""),
-                session,
-                "grades",
-                String.valueOf(courseId));
-        } else {
-            redir.addFlashAttribute("message", result);
-        }
+        redir.addFlashAttribute("message",
+            "Transfer/TOR crediting is managed in Enrollment (Cashier). "
+                + "Registrar no longer records accreditation here — use Enrollment to encode credits, then verify grades on Academic History.");
         redir.addAttribute("username", username);
         return "redirect:/admin/student-manager";
     }
 
     @PostMapping("/admin/student-manager/bulk-credit")
     public String bulkCreditTransferGrades(@RequestParam String studentNumber,
-                                           @RequestParam String bulkCreditCsv,
+                                           @RequestParam(required = false) String bulkCreditCsv,
                                            @RequestParam(required = false) String defaultSourceSchool,
                                            RedirectAttributes redir,
                                            HttpSession session) {
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
         String username = studentNumber != null ? studentNumber.trim() : "";
-        CreditGradeService.BulkCreditResult result =
-            creditGradeService.bulkCreditFromCsv(username, bulkCreditCsv, defaultSourceSchool);
-        String summary = "Bulk credit: " + result.credited() + " credited, " + result.skipped() + " skipped.";
-        if (result.credited() > 0) {
-            redir.addFlashAttribute("successMessage", summary);
-            recordTrail(
-                username,
-                "TRANSFER_CREDIT",
-                "BULK_TRANSFER_CREDIT_RECORDED",
-                "Bulk transfer/TOR credit recorded",
-                summary + (defaultSourceSchool != null && !defaultSourceSchool.isBlank() ? " Default source: " + defaultSourceSchool.trim() : ""),
-                session,
-                "grades",
-                username);
-        } else {
-            redir.addFlashAttribute("message", summary);
-        }
-        redir.addFlashAttribute("bulkCreditLines", result.lines());
+        redir.addFlashAttribute("message",
+            "Bulk transfer/TOR crediting is managed in Enrollment (Cashier). Registrar import has been retired.");
         redir.addAttribute("username", username);
         return "redirect:/admin/student-manager";
     }
@@ -781,15 +801,9 @@ public class EnrollmentController {
                 redir.addAttribute("username", studentNumber);
                 return "redirect:/admin/student-manager";
             }
-            model.addAttribute("student", student);
-            List<Map<String, Object>> crossLoad = jaypeeService.getStudentLoad(studentNumber);
-            model.addAttribute("studentLoad", crossLoad);
-            int total = 0; for(Map<String,Object> cls : crossLoad) { if(cls.get("units") != null) total += ((Number)cls.get("units")).intValue(); }
-            model.addAttribute("totalUnits", total);
-            model.addAttribute("finance", financeInfo);
+            registrationFormPrintService.populateRegistrationFormModel(
+                model, student, currentUsername(session));
             model.addAttribute("ledger", financeService.getStudentLedger(studentNumber));
-            model.addAttribute("corTermLabel", academicService.getCurrentTermLabel());
-            model.addAttribute("formTitle", jaypeeService.resolveRegistrationFormTitle(studentNumber));
             documentTrailService.recordStudentEvent(
                 studentNumber,
                 "STUDENT",

@@ -38,7 +38,7 @@ import java.util.Map;
 public class JaypeeIntegrationService {
 
     private static final String OPEN_SECTION_FILTER =
-        " AND UPPER(COALESCE(cs.section_status, 'Open')) NOT IN ('CLOSED', 'DISSOLVED')";
+        " AND (UPPER(TRIM(COALESCE(cs.section_status, ''))) IN ('OPEN', 'ACTIVE')) ";
 
     private final JdbcTemplate db;
 
@@ -281,7 +281,7 @@ public class JaypeeIntegrationService {
                       "JOIN programs p ON ct.program_id = p.program_id " +
                       "LEFT JOIN class_schedules sch ON cs.section_id = sch.section_id " +
                       "WHERE p.program_code = ? AND cc.year_level = ? AND cc.semester_number = ? " +
-                      "AND COALESCE(c.onlist, c.active_status, 1) = 1 " + OPEN_SECTION_FILTER +
+                      "AND COALESCE(c.onlist, 0) = 1 " + OPEN_SECTION_FILTER +
                       (currentTermId != null ? "AND cs.term_id = ? " : "") +
                       "AND cs.section_id = (" +
                       "  SELECT cs2.section_id FROM class_sections cs2 " +
@@ -316,7 +316,7 @@ public class JaypeeIntegrationService {
                       curriculumJoin +
                       "JOIN programs p ON ct.program_id = p.program_id " +
                       "LEFT JOIN class_schedules sch ON cs.section_id = sch.section_id " +
-                      "WHERE p.program_code = ? AND COALESCE(c.onlist, c.active_status, 1) = 1 " + OPEN_SECTION_FILTER +
+                      "WHERE p.program_code = ? AND COALESCE(c.onlist, 0) = 1 " + OPEN_SECTION_FILTER +
                       (currentTermId != null ? "AND cs.term_id = ? " : "") +
                       "GROUP BY cs.section_id, c.course_id, c.course_code, c.course_title, c.credit_units, cs.term_id, " +
                       "  cs.section_code, cs.max_capacity, cc.year_level, cc.semester_number " +
@@ -618,7 +618,7 @@ public class JaypeeIntegrationService {
 
             // All courses in the student's program+semester, across ALL year levels.
             // Year-level is shown for reference only — access is gated by prerequisites, not year.
-            StringBuilder where = new StringBuilder(" WHERE COALESCE(c.onlist, c.active_status, 1) = 1 ").append(OPEN_SECTION_FILTER);
+            StringBuilder where = new StringBuilder(" WHERE COALESCE(c.onlist, 0) = 1 ");
             List<Object> courseParams = new ArrayList<>();
             if (program != null) {
                 where.append(" AND p.program_code = ? ");
@@ -688,8 +688,9 @@ public class JaypeeIntegrationService {
                     committedFilter("se2") +
                     ") AS enrolled_count" +
                     " FROM class_sections cs WHERE cs.course_id = ? " +
-                    (currentTermId != null ? "AND cs.term_id = ? " : "") +
-                    "ORDER BY cs.section_code",
+                    OPEN_SECTION_FILTER +
+                    (currentTermId != null ? " AND cs.term_id = ? " : "") +
+                    " ORDER BY cs.section_code",
                     currentTermId != null ? new Object[]{courseId, currentTermId} : new Object[]{courseId});
 
                 boolean anyAvailable = false;

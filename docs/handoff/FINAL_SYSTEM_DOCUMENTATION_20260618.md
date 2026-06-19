@@ -31,7 +31,8 @@ Production approval remains blocked by security, operations, official business d
 | Grades, grade changes, grading windows, academic records | Registrar |
 | Withdrawal approval and academic document trail | Registrar |
 | Scholarship eligibility review and posting | Registrar, with Enrollment consuming posted status |
-| Fee amounts and payment transactions | Enrollment / Accounting, using Registrar-managed term fee configuration in the current shared design |
+| Fee amounts and payment transactions | **Enrollment / Accounting** (Cashier configures program fees and finance policy) |
+| Fee readiness before term deployment | **Registrar** (read-only check — Settings and Fee Readiness pages) |
 
 ### Retired scope
 
@@ -92,7 +93,7 @@ Deleting or changing an upstream record can invalidate downstream scheduling and
 - faculty grade entry, grading windows, grade-change requests, and approval views
 - configurable scholarship policy using completed units; demo default is 27 units
 - scholarship workflow: `PENDING -> APPROVED -> POSTED`, plus reject/revoke paths
-- exact-term fee readiness, CSV import/export, and finance-policy administration
+- term fee readiness reporting (read-only; fee amounts configured in Enrollment)
 - term-transition preparation and readiness checks
 
 ## 7. Known boundaries and deferred work

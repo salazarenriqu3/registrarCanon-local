@@ -72,6 +72,12 @@ public class CurriculumSeederService {
 
     /** Dry-run preview for a manually selected target program. */
     public Map<String, Object> previewCurriculumFile(MultipartFile file, String schoolName, String programCode) {
+        return previewCurriculumFile(file, schoolName, programCode, null);
+    }
+
+    /** Dry-run preview for a manually selected target program. */
+    public Map<String, Object> previewCurriculumFile(MultipartFile file, String schoolName, String programCode,
+                                                     String academicYear) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("fileName", file.getOriginalFilename());
         result.put("schoolName", schoolName);
@@ -85,6 +91,10 @@ public class CurriculumSeederService {
         List<Map<String, Object>> rows = new ArrayList<>();
         try (InputStream is = file.getInputStream(); XWPFDocument doc = new XWPFDocument(is)) {
             ParsedCurriculum parsed = parseCurriculumDocument(doc, warnings);
+            String resolvedAcademicYear = academicYear != null && !academicYear.isBlank()
+                ? academicYear.trim()
+                : parsed.academicYear();
+            result.put("academicYear", resolvedAcademicYear);
             rows.addAll(toPreviewRows(parsed.rows()));
         } catch (Exception e) {
             warnings.add("Parse error: " + e.getMessage());
@@ -98,6 +108,12 @@ public class CurriculumSeederService {
 
     /** Publishes one uploaded curriculum into an explicitly selected program code. */
     public Map<String, Object> seedUploadedFile(MultipartFile file, String schoolName, String programCode) {
+        return seedUploadedFile(file, schoolName, programCode, null);
+    }
+
+    /** Publishes one uploaded curriculum into an explicitly selected program code. */
+    public Map<String, Object> seedUploadedFile(MultipartFile file, String schoolName, String programCode,
+                                                String academicYear) {
         String rawName = file.getOriginalFilename() != null ? file.getOriginalFilename().replace(".docx", "") : "UNKNOWN";
         String targetProgramCode = normalizeProgramCode(programCode);
 
@@ -125,13 +141,7 @@ public class CurriculumSeederService {
             return result;
         }
 
-        if (hasOperationalActiveCurriculum(programId)) {
-            warnings.add("Program " + targetProgramCode + " already has an operational active curriculum. Upload publish was blocked to avoid overwriting live structure.");
-            result.put("seededCount", 0);
-            result.put("warnings", warnings);
-            result.put("status", "partial");
-            return result;
-        }
+        boolean hasActiveCurriculum = hasOperationalActiveCurriculum(programId);
 
         try {
             db.execute("SET FOREIGN_KEY_CHECKS = 0");
@@ -140,14 +150,24 @@ public class CurriculumSeederService {
 
             try (InputStream is = file.getInputStream(); XWPFDocument doc = new XWPFDocument(is)) {
                 ParsedCurriculum parsed = parseCurriculumDocument(doc, warnings);
+                String resolvedAcademicYear = academicYear != null && !academicYear.isBlank()
+                    ? academicYear.trim()
+                    : parsed.academicYear();
+                parsed = new ParsedCurriculum(resolvedAcademicYear, parsed.rows());
                 seededCount = publishParsedCurriculum(
                     programId,
                     targetProgramCode,
                     programName(programId, rawName) + " Curriculum",
                     parsed,
                     "Draft",
+                    !hasActiveCurriculum,
                     true,
                     warnings);
+                if (hasActiveCurriculum && seededCount > 0) {
+                    warnings.add(0,
+                        "Saved as a new draft version. The current active curriculum for "
+                            + targetProgramCode + " was kept unchanged — review under Drafts, then Publish & Activate.");
+                }
             }
         } catch (Exception e) {
             warnings.add("Seed error: " + e.getMessage());
@@ -164,7 +184,11 @@ public class CurriculumSeederService {
 
         result.put("seededCount", seededCount);
         result.put("warnings", warnings);
-        result.put("status", warnings.isEmpty() ? "success" : "partial");
+        result.put("status", seededCount > 0 && warnings.stream().noneMatch(w -> w.startsWith("Seed error"))
+            ? (warnings.isEmpty() ? "success" : "partial") : "partial");
+        if (seededCount > 0) {
+            result.put("curriculumId", latestCurriculumId(programId));
+        }
         return result;
     }
 
@@ -290,6 +314,33 @@ public class CurriculumSeederService {
         return db.queryForList(
             "SELECT program_id, program_code, program_name, school_name " +
                 "FROM programs WHERE COALESCE(active_status, 1) = 1 ORDER BY school_name, program_name");
+    }
+
+    public List<String> listKnownAcademicYears() {
+        return db.queryForList(
+            "SELECT years.academic_year FROM (" +
+                "SELECT DISTINCT academic_year FROM academic_terms " +
+                "WHERE academic_year IS NOT NULL AND TRIM(academic_year) <> '' " +
+                "UNION " +
+                "SELECT DISTINCT academic_year FROM curriculum_templates " +
+                "WHERE academic_year IS NOT NULL AND TRIM(academic_year) <> ''" +
+            ") years ORDER BY years.academic_year DESC",
+            String.class);
+    }
+
+    public List<Map<String, Object>> listCurriculumChoices() {
+        return db.queryForList(
+            "SELECT ct.curriculum_id, ct.curriculum_name, ct.academic_year, ct.version_number, " +
+                "ct.approval_status, COALESCE(ct.is_active, 0) AS is_active, " +
+                "p.program_code, p.program_name, p.school_name, " +
+                "COUNT(cc.curriculum_course_id) AS course_count " +
+                "FROM curriculum_templates ct " +
+                "JOIN programs p ON p.program_id = ct.program_id " +
+                "LEFT JOIN curriculum_courses cc ON cc.curriculum_id = ct.curriculum_id " +
+                "GROUP BY ct.curriculum_id, ct.curriculum_name, ct.academic_year, ct.version_number, " +
+                "ct.approval_status, ct.is_active, p.program_code, p.program_name, p.school_name " +
+                "ORDER BY p.school_name, p.program_code, COALESCE(ct.is_active, 0) DESC, " +
+                "ct.version_number DESC, ct.curriculum_id DESC");
     }
 
     public List<Map<String, Object>> listDepartments() {
@@ -782,11 +833,23 @@ public class CurriculumSeederService {
                                         String approvalStatus,
                                         boolean activate,
                                         List<String> warnings) {
+        return publishParsedCurriculum(
+            programId, programCode, curriculumName, parsed, approvalStatus, activate, false, warnings);
+    }
+
+    private int publishParsedCurriculum(int programId,
+                                        String programCode,
+                                        String curriculumName,
+                                        ParsedCurriculum parsed,
+                                        String approvalStatus,
+                                        boolean activate,
+                                        boolean alwaysNewTemplate,
+                                        List<String> warnings) {
         if (parsed.rows().isEmpty()) {
             return 0;
         }
 
-        Integer curriculumId = findReusableActiveDraftTemplate(programId);
+        Integer curriculumId = alwaysNewTemplate ? null : findReusableActiveDraftTemplate(programId);
         if (curriculumId == null) {
             int nextVersion = nextVersionNumber(programId);
             db.update(

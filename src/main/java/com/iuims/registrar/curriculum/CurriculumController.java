@@ -56,6 +56,8 @@ public class CurriculumController {
 
         model.addAttribute("programs", seederService.listCurriculumDashboard(view, programCode));
         model.addAttribute("programOptions", seederService.listProgramOptions());
+        model.addAttribute("curriculumChoices", seederService.listCurriculumChoices());
+        model.addAttribute("academicYearOptions", seederService.listKnownAcademicYears());
         model.addAttribute("departments", seederService.listDepartments());
         model.addAttribute("completionQueue", seederService.listCurriculumCompletionQueue());
         model.addAttribute("selectedView", view);
@@ -83,6 +85,8 @@ public class CurriculumController {
         model.addAttribute("curriculumEditable", seederService.isEditableDraft(curriculumId));
         model.addAttribute("programs", seederService.listPrograms());
         model.addAttribute("programOptions", seederService.listProgramOptions());
+        model.addAttribute("curriculumChoices", seederService.listCurriculumChoices());
+        model.addAttribute("academicYearOptions", seederService.listKnownAcademicYears());
         model.addAttribute("departments", seederService.listDepartments());
         model.addAttribute("completionQueue", seederService.listCurriculumCompletionQueue());
         model.addAttribute("selectedView", "active");
@@ -321,6 +325,7 @@ public class CurriculumController {
     public String uploadAndSeed(@RequestParam("file") MultipartFile file,
                                 @RequestParam(defaultValue = "General") String schoolName,
                                 @RequestParam String programCode,
+                                @RequestParam(required = false) String academicYear,
                                 HttpSession session, RedirectAttributes ra) {
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
 
@@ -331,15 +336,26 @@ public class CurriculumController {
             return "redirect:/admin/curriculum";
         }
         try {
-            Map<String, Object> result = seederService.seedUploadedFile(file, schoolName, programCode);
+            Map<String, Object> result = seederService.seedUploadedFile(file, schoolName, programCode, academicYear);
             int count = result.get("seededCount") != null ? (int) result.get("seededCount") : 0;
             @SuppressWarnings("unchecked")
             List<String> warnings = (List<String>) result.get("warnings");
-            String msg = "✅ \"" + file.getOriginalFilename() + "\" — " + count + " courses seeded ["
+            if (count == 0) {
+                String detail = warnings != null && !warnings.isEmpty()
+                    ? warnings.get(0)
+                    : "No courses were saved from this document.";
+                ra.addAttribute("error", "❌ Upload failed: " + detail);
+                return "redirect:/admin/curriculum";
+            }
+            String msg = "✅ \"" + file.getOriginalFilename() + "\" — " + count + " courses saved ["
                 + result.get("programCode") + "].";
             if (warnings != null && !warnings.isEmpty())
-                msg += " ⚠ " + warnings.size() + " warning(s).";
+                msg += " ⚠ " + warnings.size() + " note(s).";
             ra.addAttribute("msg", msg);
+            Object curriculumId = result.get("curriculumId");
+            if (curriculumId != null) {
+                return "redirect:/admin/curriculum/view/" + curriculumId;
+            }
         } catch (Exception e) {
             ra.addAttribute("error", "❌ Upload failed: " + e.getMessage());
         }
@@ -354,13 +370,15 @@ public class CurriculumController {
     public ResponseEntity<?> previewUpload(@RequestParam("file") MultipartFile file,
                                            @RequestParam(defaultValue = "General") String schoolName,
                                            @RequestParam(required = false) String programCode,
+                                           @RequestParam(required = false) String academicYear,
                                            HttpSession session) {
         if (session.getAttribute("currentUser") == null) {
             return ResponseEntity.status(401).body("Login required.");
         }
         if (file.isEmpty()) return ResponseEntity.badRequest().body("No file uploaded.");
         try {
-            Map<String, Object> preview = seederService.previewCurriculumFile(file, schoolName, programCode);
+            Map<String, Object> preview = seederService.previewCurriculumFile(
+                file, schoolName, programCode, academicYear);
             return ResponseEntity.ok(preview);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Preview failed: " + e.getMessage());

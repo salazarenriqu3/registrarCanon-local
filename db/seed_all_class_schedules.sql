@@ -48,8 +48,8 @@ DELETE FROM class_schedules;
 INSERT INTO class_schedules (section_id, room_id, faculty_id, day_of_week, start_time, end_time, schedule_type, status)
 SELECT
     slot.section_id,
-    (SELECT MIN(room_id) FROM rooms) AS room_id,
-    (SELECT MIN(faculty_id) FROM faculty) AS faculty_id,
+    NULL AS room_id,
+    slot.faculty_id,
     MOD(slot.slot_no - 1, 5) + 1 AS day_of_week,
     CASE FLOOR((slot.slot_no - 1) / 5) MOD 5
         WHEN 0 THEN '07:30:00'
@@ -70,11 +70,12 @@ SELECT
 FROM (
     SELECT
         cs.section_id,
+        cs.faculty_id,
         cs.course_id,
         c.lab_units,
         ROW_NUMBER() OVER (
-            PARTITION BY cs.term_id, cs.section_code
-            ORDER BY c.course_code, cs.section_id
+            PARTITION BY cs.term_id, COALESCE(cs.faculty_id, -cs.section_id)
+            ORDER BY cs.section_code, c.course_code, cs.section_id
         ) AS slot_no
     FROM class_sections cs
     JOIN courses c ON c.course_id = cs.course_id
@@ -84,8 +85,8 @@ FROM (
 INSERT INTO class_schedules (section_id, room_id, faculty_id, day_of_week, start_time, end_time, schedule_type, status)
 SELECT
     cs.section_id,
-    (SELECT MIN(room_id) FROM rooms) AS room_id,
-    (SELECT MIN(faculty_id) FROM faculty) AS faculty_id,
+    NULL AS room_id,
+    cs.faculty_id,
     MOD(cs.section_id + c.course_id + COALESCE(cs.term_id, 0), 5) + 1 AS day_of_week,
     CASE MOD(cs.section_id + c.course_id, 5)
         WHEN 0 THEN '13:00:00'

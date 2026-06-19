@@ -63,6 +63,9 @@ public class AcademicGradingService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private GradingSchemeService gradingSchemeService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private SectionSchedulingService sectionSchedulingService;
+
     public AcademicGradingService(
             JdbcTemplate db,
             TermFeeAdminService termFeeAdminService,
@@ -1812,10 +1815,16 @@ public class AcademicGradingService {
             section.setCourseId(courseId);
             section.setTermId(termId);
             section.setSectionCode(sectionCode);
-            section.setFacultyId((facultyId == null || facultyId == 0) ? null : facultyId);
+            section.setFacultyId(null);
             section.setMaxCapacity(maxCapacity);
             section.setSectionStatus("Open");
             classSectionRepository.saveAndFlush(section);
+            if (facultyId != null && facultyId > 0 && sectionSchedulingService != null) {
+                String assignResult = sectionSchedulingService.assignFaculty(section.getSectionId(), facultyId);
+                if (!"SUCCESS".equals(assignResult)) {
+                    return assignResult;
+                }
+            }
             return "SUCCESS";
         } catch (Exception e) { return "ERROR: " + e.getMessage(); }
     }
@@ -1939,6 +1948,10 @@ public class AcademicGradingService {
 
     @Transactional
     public String assignFaculty(int sectionId, Integer facultyId) {
+        if (sectionSchedulingService != null) {
+            String result = sectionSchedulingService.assignFaculty(sectionId, facultyId);
+            return "SUCCESS".equals(result) ? result : result;
+        }
         try {
             ClassSection section = classSectionRepository.findById(sectionId).orElse(null);
             if (section == null) return "ERROR: Section not found.";

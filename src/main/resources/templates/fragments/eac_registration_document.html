@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--
+  EAC registration / pre-registration document layout aligned with Admission PreRegPdfService.
+  Used by admin print_cor and student_cor.
+-->
+<div th:fragment="document" class="eac-reg-doc">
+    <style>
+        .eac-reg-doc {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 10pt;
+            color: #000;
+            line-height: 1.25;
+        }
+        .eac-reg-doc .page {
+            max-width: 8.5in;
+            margin: 0 auto;
+            background: #fff;
+        }
+        .eac-reg-doc .page-meta {
+            text-align: right;
+            font-size: 7pt;
+            margin-bottom: 4px;
+        }
+        .eac-reg-doc .header-center {
+            text-align: center;
+        }
+        .eac-reg-doc .college-name {
+            font-weight: 700;
+            font-size: 11pt;
+            margin: 0;
+        }
+        .eac-reg-doc .college-address {
+            font-size: 7.5pt;
+            margin: 2px 0 0;
+        }
+        .eac-reg-doc .rule {
+            border-top: 0.7px solid #000;
+            margin: 6px 0;
+        }
+        .eac-reg-doc .form-title {
+            text-align: center;
+            font-weight: 700;
+            font-size: 10.5pt;
+            margin: 0;
+            letter-spacing: 0.02em;
+        }
+        .eac-reg-doc .student-box {
+            border: 0.5px solid #000;
+            margin-top: 10px;
+        }
+        .eac-reg-doc .student-row {
+            display: grid;
+            border-bottom: 0.4px solid #000;
+            min-height: 14px;
+            align-items: center;
+        }
+        .eac-reg-doc .student-row:last-child { border-bottom: none; }
+        .eac-reg-doc .student-row.r1 { grid-template-columns: 1fr 1fr; }
+        .eac-reg-doc .student-row.r2 { grid-template-columns: 1fr; }
+        .eac-reg-doc .student-row.r3 { grid-template-columns: 102px 110px 1fr; font-size: 6pt; color: #333; min-height: 10px; }
+        .eac-reg-doc .student-row.r4 { grid-template-columns: 1fr 1fr; }
+        .eac-reg-doc .student-cell {
+            padding: 3px 4px;
+            border-right: 0.4px solid #000;
+        }
+        .eac-reg-doc .student-cell:last-child { border-right: none; }
+        .eac-reg-doc .lbl { font-size: 7.5pt; }
+        .eac-reg-doc .val { font-weight: 700; font-size: 7.5pt; }
+        .eac-reg-doc .name-parts {
+            display: grid;
+            grid-template-columns: 102px 110px 1fr auto auto;
+            gap: 0;
+            align-items: center;
+            padding: 3px 4px;
+        }
+        .eac-reg-doc .name-parts .val { text-transform: uppercase; }
+        .eac-reg-doc table.subjects {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            font-size: 7pt;
+        }
+        .eac-reg-doc table.subjects th,
+        .eac-reg-doc table.subjects td {
+            border: 0.5px solid #000;
+            padding: 3px;
+            vertical-align: top;
+        }
+        .eac-reg-doc table.subjects th {
+            background: #d1d1d1;
+            font-weight: 700;
+            font-size: 6.5pt;
+            text-align: left;
+        }
+        .eac-reg-doc table.subjects .center { text-align: center; }
+        .eac-reg-doc table.subjects .section-cell {
+            font-weight: 700;
+            text-align: center;
+        }
+        .eac-reg-doc .fee-grid {
+            display: grid;
+            grid-template-columns: 57.5% 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .eac-reg-doc .fee-block-title {
+            text-align: center;
+            font-weight: 700;
+            font-size: 7.5pt;
+            margin-bottom: 6px;
+        }
+        .eac-reg-doc .fee-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 7.5pt;
+            margin-bottom: 2px;
+        }
+        .eac-reg-doc .fee-line.indent { padding-left: 12px; }
+        .eac-reg-doc .fee-line.bold { font-weight: 700; }
+        .eac-reg-doc .fee-total {
+            border-top: 0.5px solid #000;
+            border-bottom: 0.5px solid #000;
+            padding-top: 3px;
+            margin-top: 3px;
+        }
+        .eac-reg-doc table.payment {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 7pt;
+        }
+        .eac-reg-doc table.payment th,
+        .eac-reg-doc table.payment td {
+            border: 0.5px solid #000;
+            padding: 3px;
+        }
+        .eac-reg-doc table.payment th {
+            background: #d1d1d1;
+            font-weight: 700;
+        }
+        .eac-reg-doc table.payment td.amount {
+            text-align: right;
+            white-space: nowrap;
+        }
+        .eac-reg-doc .rules-title {
+            font-weight: 700;
+            font-size: 8pt;
+            margin-top: 10px;
+            border-bottom: 0.5px solid #000;
+            padding-bottom: 2px;
+        }
+        .eac-reg-doc .rules-text {
+            font-size: 7.5pt;
+            margin-top: 6px;
+        }
+        .eac-reg-doc .rules-text p { margin: 0 0 7px; }
+        .eac-reg-doc .doc-footer {
+            border-top: 0.5px solid #000;
+            margin-top: 14px;
+            padding-top: 6px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 7pt;
+        }
+        .eac-reg-doc .page-break { page-break-before: always; }
+        @media print {
+            .eac-reg-doc .page { max-width: none; }
+        }
+    </style>
+
+    <div class="page">
+        <div class="page-meta">Page 1 of 2</div>
+        <div class="header-center">
+            <p class="college-name">Emilio Aguinaldo College</p>
+            <p class="college-address">1113-1117 San Marcelino cor. Gonzales St. Brgy 674, Zone 73 Dist. V. Paco, Manila</p>
+        </div>
+        <div class="rule"></div>
+        <p class="form-title" th:text="${formTitle != null ? #strings.toUpperCase(formTitle) : 'REGISTRATION FORM'}">REGISTRATION FORM</p>
+        <div class="rule"></div>
+
+        <div class="student-box">
+            <div class="student-row r1">
+                <div class="student-cell">
+                    <span class="lbl">Student Number : </span>
+                    <span class="val" th:text="${student.username}"></span>
+                </div>
+                <div class="student-cell">
+                    <span class="lbl">Status : </span>
+                    <span class="val" th:text="${statusLabel}"></span>
+                </div>
+            </div>
+            <div class="student-row r2">
+                <div class="name-parts">
+                    <span class="lbl">Name :</span>
+                    <span class="val" th:text="${student.last_name}"></span>
+                    <span class="val" th:text="${student.first_name}"></span>
+                    <span class="val" th:text="${student.middle_name}"></span>
+                    <span class="lbl">Age : </span>
+                    <span class="val" th:text="${student.age}"></span>
+                    <span class="lbl">Gender : </span>
+                    <span class="val" th:text="${student.gender}"></span>
+                </div>
+            </div>
+            <div class="student-row r3">
+                <span>(Last)</span>
+                <span>(First)</span>
+                <span>(Middle)</span>
+            </div>
+            <div class="student-row r4">
+                <div class="student-cell">
+                    <span class="lbl">Course &amp; Year : </span>
+                    <span class="val" th:text="${courseYearLine}"></span>
+                </div>
+                <div class="student-cell">
+                    <span class="lbl">Semester/School Year : </span>
+                    <span class="val" th:text="${semesterSchoolYearLine}"></span>
+                </div>
+            </div>
+        </div>
+
+        <table class="subjects">
+            <thead>
+                <tr>
+                    <th style="width:12%">SUBJECT CODE</th>
+                    <th style="width:30%">DESCRIPTION</th>
+                    <th style="width:24%">SCHEDULE</th>
+                    <th style="width:10%">SECTION</th>
+                    <th style="width:10%">TOTAL UNITS</th>
+                    <th style="width:14%">REGISTERED BY</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="load : ${studentLoad}">
+                    <td th:text="${load.course_code}"></td>
+                    <td th:text="${load.description}"></td>
+                    <td th:text="${load.pretty_schedule}"></td>
+                    <td class="section-cell" th:text="${load.section}"></td>
+                    <td class="center" th:text="${load.units}"></td>
+                    <td class="center">Registrar</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(studentLoad)}">
+                    <td colspan="6" class="center">No subjects enrolled.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="fee-grid">
+            <div>
+                <div class="fee-block-title">:: FEE DETAILS ::</div>
+                <div class="fee-line"><span>TUITION FEE</span><span th:text="${'Php ' + #numbers.formatDecimal(tuitionAmount, 1, 'COMMA', 2, 'POINT')}"></span></div>
+                <div class="fee-line"><span>TUTORIAL FEES</span><span>0.00</span></div>
+                <div class="fee-line bold"><span>MISCELLANEOUS FEES</span><span th:text="${'Php ' + #numbers.formatDecimal(miscAmount, 1, 'COMMA', 2, 'POINT')}"></span></div>
+                <div th:each="line : ${miscFeeLines}" class="fee-line indent">
+                    <span th:text="${line.label}"></span>
+                    <span th:text="${'Php ' + line.amount}"></span>
+                </div>
+                <div class="fee-line bold"><span>LABORATORY FEES</span><span th:text="${'Php ' + #numbers.formatDecimal(laboratoryAmount, 1, 'COMMA', 2, 'POINT')}"></span></div>
+                <div class="fee-line bold"><span>OTHER FEES</span><span th:text="${'Php ' + #numbers.formatDecimal(otherAmount, 1, 'COMMA', 2, 'POINT')}"></span></div>
+                <div th:each="line : ${otherFeeLines}" class="fee-line indent">
+                    <span th:text="${line.label}"></span>
+                    <span th:text="${'Php ' + line.amount}"></span>
+                </div>
+                <div class="fee-line fee-total bold">
+                    <span>TOTAL ASSESSMENT</span>
+                    <span th:text="${'Php ' + finance.total_assessment_fmt}"></span>
+                </div>
+                <div class="fee-line bold">
+                    <span>Parent Share</span>
+                    <span th:text="${'Php ' + finance.total_assessment_fmt}"></span>
+                </div>
+            </div>
+            <div>
+                <div class="fee-block-title">:: PAYMENT DETAILS ::</div>
+                <table class="payment">
+                    <thead>
+                        <tr>
+                            <th>PAYMENT MODE</th>
+                            <th style="width:38%">INSTALLMENT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="row : ${paymentRows}">
+                            <td th:text="${row.label}"></td>
+                            <td class="amount" th:text="${row.amount}"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="rules-title">RULES GOVERNING RECORD / ADJUSTMENT OF FEES</div>
+        <div class="rules-text">
+            <p>1. When a student registers in the College, it is understood that he/she is enrolling for the entire semester.</p>
+        </div>
+
+        <div class="doc-footer">
+            <span th:text="${'Printed by : ' + printedBy}"></span>
+            <span th:text="${'Date and Time Printed : ' + printedAt}"></span>
+        </div>
+    </div>
+
+    <div class="page page-break">
+        <div class="page-meta">Page 2 of 2</div>
+        <div class="header-center">
+            <p class="college-name">Emilio Aguinaldo College</p>
+            <p class="college-address">1113-1117 San Marcelino cor. Gonzales St. Brgy 674, Zone 73 Dist. V. Paco, Manila</p>
+        </div>
+        <div class="rule"></div>
+        <p class="form-title" th:text="${formTitle != null ? #strings.toUpperCase(formTitle) : 'REGISTRATION FORM'}">REGISTRATION FORM</p>
+        <div class="rule"></div>
+
+        <div class="student-box" style="margin-bottom: 10px;">
+            <div class="student-row r1">
+                <div class="student-cell">
+                    <span class="lbl">Student Number : </span>
+                    <span class="val" th:text="${student.username}"></span>
+                </div>
+                <div class="student-cell">
+                    <span class="lbl">Status : </span>
+                    <span class="val" th:text="${statusLabel}"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="rules-title">RULES GOVERNING RECORD / ADJUSTMENT OF FEES</div>
+        <div class="rules-text">
+            <p>2. A student who transfer or otherwise withdraws, within two (2) weeks after the beginning of classes and who has already paid the pertinent tuition and other school fees in full or any length of time longer than one (1) month may be charged twenty five percent (25%) of amount due for the term of he/she withdraws within the first week of classes or fifty percent (50%) of amount due for the term if within the second week of classes, regardless of whether or not he/she has actually attended the classes. The student may be charged all the school fees in full if he/she withdraws anytime after the second week of classes.</p>
+            <p>3. If the transfer or withdrawal is due to a justifiable reason, the student shall be charged the pertinent fees only up to and including the last month of attendance.</p>
+            <p>4. Registration and other pertinent fees are not refundable.</p>
+        </div>
+
+        <div class="doc-footer">
+            <span th:text="${'Printed by : ' + printedBy}"></span>
+            <span th:text="${'Date and Time Printed : ' + printedAt}"></span>
+        </div>
+    </div>
+</div>
+</body>
+</html>

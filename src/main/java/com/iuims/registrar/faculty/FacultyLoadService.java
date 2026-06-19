@@ -14,6 +14,7 @@ import com.iuims.registrar.jaypee.JaypeeIntegrationService;
 import com.iuims.registrar.core.PolicySettings;
 import com.iuims.registrar.core.SqlGenerator;
 import com.iuims.registrar.academic.ScheduleConflictValidator;
+import com.iuims.registrar.academic.SchedulingPolicyConstants;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -238,8 +239,8 @@ public class FacultyLoadService {
             "), 0) " +
             "FROM class_sections cs " +
             "JOIN courses c ON c.course_id = cs.course_id " +
-            "WHERE cs.faculty_id = ? AND cs.term_id = ?",
-            Integer.class, facultyId, termId);
+            "WHERE cs.faculty_id = ? AND cs.term_id = ? AND cs.section_id <> ?",
+            Integer.class, facultyId, termId, sectionId);
 
         // Get units of the section being assigned
         Integer sectionUnits = db.queryForObject(
@@ -255,7 +256,8 @@ public class FacultyLoadService {
 
         int load = (currentLoad == null ? 0 : currentLoad);
         int add  = (sectionUnits == null ? 0 : sectionUnits);
-        int max  = (maxUnits == null ? 18 : maxUnits);
+        int max  = (maxUnits == null || maxUnits <= 0)
+            ? SchedulingPolicyConstants.DEFAULT_FACULTY_MAX_TEACHING_UNITS : maxUnits;
 
         return (load + add) > max;
     }

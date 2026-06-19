@@ -296,6 +296,7 @@ public class StudentCurriculumService {
 
     /**
      * Courses in the student's assigned curriculum without a passing grade.
+     * Full degree audit — used for program-shift carry-over, not profile alerts.
      */
     public List<Map<String, Object>> listCurriculumDeficiencies(String studentNumber) {
         if (studentNumber == null || studentNumber.isBlank()) return List.of();
@@ -318,6 +319,59 @@ public class StudentCurriculumService {
                     + "WHERE cc.curriculum_id = ? "
                     + "AND NOT EXISTS (SELECT 1 FROM grades g WHERE g.course_id = c.course_id AND "
                     + in + " AND " + GradeOutcomeSql.passed("g") + ") "
+                    + "ORDER BY cc.year_level, cc.semester_number, c.course_code",
+                args);
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    /**
+     * Actionable curriculum gaps through the student's current year/semester only.
+     * Excludes future-term courses and courses with an active committed enlistment (in progress).
+     * Transfer/TOR crediting is owned by Enrollment — this supports registrar profile alerts only.
+     */
+    public List<Map<String, Object>> listProfileCurriculumGaps(String studentNumber) {
+        if (studentNumber == null || studentNumber.isBlank()) return List.of();
+        String sn = studentNumber.trim();
+        Integer curriculumId = resolveCurrentCurriculum(sn);
+        if (curriculumId == null) return List.of();
+        int yearLevel = 1;
+        int semester = 1;
+        try {
+            Map<String, Object> student = db.queryForMap(
+                "SELECT year_level, semester FROM students WHERE student_number = ? LIMIT 1", sn);
+            yearLevel = student.get("year_level") instanceof Number n ? Math.max(1, n.intValue()) : 1;
+            semester = student.get("semester") instanceof Number n ? Math.max(1, n.intValue()) : 1;
+        } catch (Exception ignored) {
+        }
+        try {
+            List<Object> keys = gradeLookupKeys(sn);
+            if (keys.isEmpty()) return List.of();
+            String in = gradeInClause(keys.size());
+            String enlistIn = gradeInClause(keys.size());
+            Object[] args = new Object[keys.size() * 2 + 3];
+            args[0] = curriculumId;
+            args[1] = yearLevel;
+            args[2] = yearLevel;
+            args[3] = semester;
+            int idx = 4;
+            for (Object key : keys) {
+                args[idx++] = key;
+            }
+            for (Object key : keys) {
+                args[idx++] = key;
+            }
+            return db.queryForList(
+                "SELECT cc.year_level, cc.semester_number, c.course_id, c.course_code, c.course_title, c.credit_units "
+                    + "FROM curriculum_courses cc "
+                    + "JOIN courses c ON c.course_id = cc.course_id "
+                    + "WHERE cc.curriculum_id = ? "
+                    + "AND (cc.year_level < ? OR (cc.year_level = ? AND cc.semester_number <= ?)) "
+                    + "AND NOT EXISTS (SELECT 1 FROM grades g WHERE g.course_id = c.course_id AND "
+                    + in + " AND " + GradeOutcomeSql.passed("g") + ") "
+                    + "AND NOT EXISTS (SELECT 1 FROM student_enlistments se WHERE se.course_id = c.course_id AND "
+                    + enlistIn + " AND se.enlistment_status = 'COMMITTED') "
                     + "ORDER BY cc.year_level, cc.semester_number, c.course_code",
                 args);
         } catch (Exception e) {

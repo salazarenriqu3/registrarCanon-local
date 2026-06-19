@@ -1,5 +1,6 @@
 package com.iuims.registrar.academic;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,9 @@ public class BlockOfferingService {
     private static final String DB_COLLATE = "utf8mb4_uca1400_ai_ci";
 
     private final JdbcTemplate db;
+
+    @Autowired
+    private SectionSchedulingService sectionSchedulingService;
 
     public BlockOfferingService(JdbcTemplate db) {
         this.db = db;
@@ -166,8 +170,36 @@ public class BlockOfferingService {
         }
 
         MaterializeResult result = materializeBlockCourses(blockId);
-        return "SUCCESS: Block " + program + "-" + yearLevel + "-" + semesterNumber + "-" + group
-            + " — created " + result.created + " course slot(s), linked " + result.linked + ", skipped " + result.skipped + ".";
+        StringBuilder message = new StringBuilder(
+            "SUCCESS: Block " + program + "-" + yearLevel + "-" + semesterNumber + "-" + group
+                + " — created " + result.created + " course slot(s), linked " + result.linked
+                + ", skipped " + result.skipped + ".");
+
+        Integer preferredFaculty = facultyId != null && facultyId > 0 ? facultyId : null;
+        if (preferredFaculty == null) {
+            try {
+                preferredFaculty = db.queryForObject(
+                    "SELECT faculty_id FROM block_offerings WHERE block_id = ? AND faculty_id IS NOT NULL",
+                    Integer.class, blockId);
+            } catch (Exception ignored) {
+            }
+        }
+        if (preferredFaculty != null && sectionSchedulingService != null) {
+            SectionSchedulingService.FacultyDistributionResult distribution =
+                sectionSchedulingService.distributeBlockFaculty(blockId, preferredFaculty);
+            message.append(" Faculty assigned to ").append(distribution.sectionsAssigned()).append(" section(s).");
+            if (distribution.facultyProvisioned() > 0) {
+                message.append(" Provisioned ").append(distribution.facultyProvisioned()).append(" auto-faculty.");
+            }
+        }
+        if (sectionSchedulingService != null) {
+            SectionSchedulingService.BlockScheduleResult scheduleResult =
+                sectionSchedulingService.autoAssignBlockTimeSlots(blockId);
+            if (scheduleResult.slotsCreated() > 0) {
+                message.append(" Auto-scheduled ").append(scheduleResult.slotsCreated()).append(" slot(s).");
+            }
+        }
+        return message.toString();
     }
 
     @Transactional
@@ -175,8 +207,32 @@ public class BlockOfferingService {
         ensureSchema();
         try {
             MaterializeResult result = materializeBlockCourses(blockId);
-        return "SUCCESS: Refreshed block — created " + result.created + ", linked " + result.linked
-            + ", skipped " + result.skipped + ".";
+            StringBuilder message = new StringBuilder(
+                "SUCCESS: Refreshed block — created " + result.created + ", linked " + result.linked
+                    + ", skipped " + result.skipped + ".");
+            if (sectionSchedulingService != null) {
+                Integer preferredFaculty = null;
+                try {
+                    preferredFaculty = db.queryForObject(
+                        "SELECT faculty_id FROM block_offerings WHERE block_id = ? AND faculty_id IS NOT NULL",
+                        Integer.class, blockId);
+                } catch (Exception ignored) {
+                }
+                if (preferredFaculty != null) {
+                    SectionSchedulingService.FacultyDistributionResult distribution =
+                        sectionSchedulingService.distributeBlockFaculty(blockId, preferredFaculty);
+                    message.append(" Faculty assigned to ").append(distribution.sectionsAssigned()).append(" section(s).");
+                    if (distribution.facultyProvisioned() > 0) {
+                        message.append(" Provisioned ").append(distribution.facultyProvisioned()).append(" auto-faculty.");
+                    }
+                }
+                SectionSchedulingService.BlockScheduleResult scheduleResult =
+                    sectionSchedulingService.autoAssignBlockTimeSlots(blockId);
+                if (scheduleResult.slotsCreated() > 0) {
+                    message.append(" Auto-scheduled ").append(scheduleResult.slotsCreated()).append(" slot(s).");
+                }
+            }
+            return message.toString();
         } catch (IllegalStateException e) {
             return "ERROR: " + e.getMessage();
         }
@@ -224,7 +280,6 @@ public class BlockOfferingService {
         String sectionCode = block.get("program_code") + "-" + yearLevel + "-" + semester + "-"
             + block.get("section_group");
         int maxCapacity = block.get("max_capacity") != null ? ((Number) block.get("max_capacity")).intValue() : 40;
-        Integer facultyId = block.get("faculty_id") instanceof Number n ? n.intValue() : null;
         Integer curriculumId = block.get("curriculum_id") instanceof Number n ? n.intValue() : null;
         if (curriculumId == null) {
             throw new IllegalStateException("Block has no curriculum assigned. Create or update it with an explicit curriculum.");
@@ -247,9 +302,8 @@ public class BlockOfferingService {
             if (existing.isEmpty()) {
                 db.update(
                     "INSERT INTO class_sections (course_id, term_id, section_code, max_capacity, section_status, " +
-                    "semester_number, faculty_id, block_id) VALUES (?, ?, ?, ?, 'Open', ?, ?, ?)",
-                    courseId, termId, sectionCode, maxCapacity, semester,
-                    facultyId != null && facultyId > 0 ? facultyId : null, blockId);
+                    "semester_number, faculty_id, block_id) VALUES (?, ?, ?, ?, 'Open', ?, NULL, ?)",
+                    courseId, termId, sectionCode, maxCapacity, semester, blockId);
                 created++;
             } else {
                 Integer sectionId = ((Number) existing.get(0).get("section_id")).intValue();

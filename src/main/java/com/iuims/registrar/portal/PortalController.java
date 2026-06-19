@@ -17,6 +17,7 @@ import com.iuims.registrar.core.SqlGenerator;
 import com.iuims.registrar.academic.AcademicGradingService;
 import com.iuims.registrar.admission.FinanceAdmissionService;
 import com.iuims.registrar.core.GlobalTermService;
+import com.iuims.registrar.forms.RegistrationFormPrintService;
 import com.iuims.registrar.holds.StudentHoldService;
 import com.iuims.registrar.jaypee.JaypeeIntegrationService;
 import com.iuims.registrar.scholarship.ScholarEnrollmentService;
@@ -44,11 +45,13 @@ public class PortalController {
     private final GlobalTermService globalTermService;
     private final JdbcTemplate jdbcTemplate;
     private final StudentHoldService studentHoldService;
+    private final RegistrationFormPrintService registrationFormPrintService;
 
     public PortalController(AcademicGradingService academicService, FinanceAdmissionService financeService,
                             JaypeeIntegrationService jaypeeService, ScholarEnrollmentService scholarEnrollmentService,
                             GlobalTermService globalTermService, JdbcTemplate jdbcTemplate,
-                            StudentHoldService studentHoldService) {
+                            StudentHoldService studentHoldService,
+                            RegistrationFormPrintService registrationFormPrintService) {
         this.academicService = academicService;
         this.financeService = financeService;
         this.jaypeeService = jaypeeService;
@@ -56,6 +59,7 @@ public class PortalController {
         this.globalTermService = globalTermService;
         this.jdbcTemplate = jdbcTemplate;
         this.studentHoldService = studentHoldService;
+        this.registrationFormPrintService = registrationFormPrintService;
     }
 
 
@@ -226,18 +230,8 @@ public class PortalController {
         }
         
         m.addAttribute("student", u);
-        m.addAttribute("formTitle", jaypeeService.resolveRegistrationFormTitle(username));
-
-        List<Map<String, Object>> crossLoad = jaypeeService.getStudentLoad((String) u.get("username"));
-        m.addAttribute("studentLoad", crossLoad);
-        
-        int total = 0; 
-        for(Map<String,Object> cls : crossLoad) { 
-            if(cls.get("units") != null) total += ((Number)cls.get("units")).intValue(); 
-        }
-        m.addAttribute("totalUnits", total);
-        m.addAttribute("finance", financeInfo);
-        m.addAttribute("corTermLabel", academicService.getCurrentTermLabel());
+        registrationFormPrintService.populateRegistrationFormModel(
+            m, u, username);
         return "student_cor"; 
     }
 }

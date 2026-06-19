@@ -1,609 +1,173 @@
 package com.iuims.registrar.finance;
 
-
-
-import jakarta.servlet.http.HttpSession;
-
+import com.iuims.registrar.config.EnrollmentPortalProperties;
 import jakarta.servlet.http.HttpServletResponse;
-
-import org.springframework.beans.factory.annotation.Autowired;
-
+import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
-
 import org.springframework.ui.Model;
-
 import org.springframework.web.bind.annotation.GetMapping;
-
 import org.springframework.web.bind.annotation.PostMapping;
-
 import org.springframework.web.bind.annotation.RequestMapping;
-
 import org.springframework.web.bind.annotation.RequestParam;
-
-import org.springframework.web.multipart.MultipartFile;
-
-
-
-import java.net.URLEncoder;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.nio.charset.StandardCharsets;
-
 import java.util.List;
-
 import java.util.Map;
 
-
-
+/**
+ * Read-only term fee readiness for Registrar deployment gates.
+ * Program fee amounts are configured in Enrollment ({@code /admin/term-fees}).
+ */
 @Controller
-
 @RequestMapping("/admin/term-fees")
-
 public class TermFeeAdminController {
 
+    private final TermFeeAdminService termFeeAdminService;
+    private final EnrollmentPortalProperties enrollmentPortal;
 
-
-    @Autowired
-
-    private TermFeeAdminService termFeeAdminService;
-
-
+    public TermFeeAdminController(TermFeeAdminService termFeeAdminService,
+                                    EnrollmentPortalProperties enrollmentPortal) {
+        this.termFeeAdminService = termFeeAdminService;
+        this.enrollmentPortal = enrollmentPortal;
+    }
 
     @GetMapping
-
     public String show(@RequestParam(required = false) Integer termId,
-
                        @RequestParam(required = false) String programCode,
-
                        @RequestParam(defaultValue = "1") int yearLevel,
-
                        @RequestParam(defaultValue = "1") int semester,
-
-                       HttpSession s,
-
-                       Model m) {
-
-        if (s.getAttribute("currentUser") == null) return "redirect:/login";
-
-
+                       HttpSession session,
+                       Model model) {
+        if (session.getAttribute("currentUser") == null) {
+            return "redirect:/login";
+        }
 
         List<String> missingTables = termFeeAdminService.validateTablesExist();
-
-        m.addAttribute("missingTables", missingTables);
-
-        m.addAttribute("terms", termFeeAdminService.listTermsAscending());
-
-        m.addAttribute("programs", termFeeAdminService.listPrograms());
-
-
+        model.addAttribute("missingTables", missingTables);
+        model.addAttribute("terms", termFeeAdminService.listTermsAscending());
+        model.addAttribute("programs", termFeeAdminService.listPrograms());
 
         Integer activeTermId = termFeeAdminService.getActiveTermId();
-
         Integer effectiveTermId = termId != null ? termId : activeTermId;
-
-        m.addAttribute("activeTermId", activeTermId);
-
-        m.addAttribute("termId", effectiveTermId);
-
-        m.addAttribute("yearLevel", yearLevel);
-
-        m.addAttribute("semester", semester);
-
-        m.addAttribute("termReadiness", termFeeAdminService.buildTermReadinessSummary(effectiveTermId));
-
-        m.addAttribute("unresolvedScopes", termFeeAdminService.listFeeScopeReadiness(effectiveTermId, true, 40));
-
-
+        model.addAttribute("activeTermId", activeTermId);
+        model.addAttribute("termId", effectiveTermId);
+        model.addAttribute("yearLevel", yearLevel);
+        model.addAttribute("semester", semester);
+        model.addAttribute("termReadiness", termFeeAdminService.buildTermReadinessSummary(effectiveTermId));
+        model.addAttribute("unresolvedScopes", termFeeAdminService.listFeeScopeReadiness(effectiveTermId, true, 40));
 
         Integer previousTermId = effectiveTermId != null
-
             ? termFeeAdminService.resolvePreviousTermId(effectiveTermId) : null;
-
-        m.addAttribute("previousTermId", previousTermId);
-
-        m.addAttribute("sourceTermReadiness",
-
+        model.addAttribute("previousTermId", previousTermId);
+        model.addAttribute("sourceTermReadiness",
             previousTermId != null ? termFeeAdminService.buildTermReadinessSummary(previousTermId) : Map.of());
 
-
-
         String effectiveProgram = (programCode != null && !programCode.isBlank())
-
             ? programCode.trim().toUpperCase()
-
             : (!termFeeAdminService.listPrograms().isEmpty()
-
                 ? (String) termFeeAdminService.listPrograms().get(0).get("program_code") : null);
-
-        m.addAttribute("programCode", effectiveProgram);
-
-
+        model.addAttribute("programCode", effectiveProgram);
 
         Integer programId = effectiveProgram != null
-
             ? termFeeAdminService.resolveProgramId(effectiveProgram) : null;
 
-
-
         if (effectiveTermId != null && programId != null && missingTables.isEmpty()) {
-
             List<Map<String, Object>> feeTypes =
-
                 termFeeAdminService.listFeeTypesForAdmin(programId, effectiveTermId, yearLevel, semester);
-
             Map<String, Double> currentRates =
-
                 termFeeAdminService.getFeeRatesForScope(programId, effectiveTermId, yearLevel, semester);
-
             Map<String, String> rateSources =
-
                 termFeeAdminService.getFeeRateSourcesForScope(programId, effectiveTermId, yearLevel, semester);
-
-            m.addAttribute("feeTypes", feeTypes);
-
-            m.addAttribute("currentRates", currentRates);
-
-            m.addAttribute("rateSources", rateSources);
-
-            m.addAttribute("missingFeeCodes", missingFeeCodes(feeTypes, currentRates));
-
-            m.addAttribute("fallbackFeeCodes", fallbackFeeCodes(feeTypes, rateSources));
-
+            model.addAttribute("feeTypes", feeTypes);
+            model.addAttribute("currentRates", currentRates);
+            model.addAttribute("rateSources", rateSources);
+            model.addAttribute("missingFeeCodes", missingFeeCodes(feeTypes, currentRates));
+            model.addAttribute("fallbackFeeCodes", fallbackFeeCodes(feeTypes, rateSources));
+            model.addAttribute("enrollmentScopeUrl",
+                enrollmentPortal.termFeesScopeUrl(effectiveTermId, effectiveProgram, yearLevel, semester));
         } else {
-
-            m.addAttribute("feeTypes", List.of());
-
-            m.addAttribute("currentRates", Map.of());
-
-            m.addAttribute("rateSources", Map.of());
-
-            m.addAttribute("missingFeeCodes", List.of());
-
-            m.addAttribute("fallbackFeeCodes", List.of());
-
+            model.addAttribute("feeTypes", List.of());
+            model.addAttribute("currentRates", Map.of());
+            model.addAttribute("rateSources", Map.of());
+            model.addAttribute("missingFeeCodes", List.of());
+            model.addAttribute("fallbackFeeCodes", List.of());
+            model.addAttribute("enrollmentScopeUrl", enrollmentPortal.termFeesUrl());
         }
-
-
 
         return "admin_term_fees";
-
     }
 
-
-
-    @PostMapping("/save")
-
-    public String save(@RequestParam(required = false) Integer termId,
-
-                       @RequestParam String programCode,
-
-                       @RequestParam(defaultValue = "1") int yearLevel,
-
-                       @RequestParam(defaultValue = "1") int semester,
-
-                       @RequestParam Map<String, String> params,
-
-                       HttpSession s) {
-
-        if (s.getAttribute("currentUser") == null) return "redirect:/login";
-
-        String prog = programCode != null ? programCode.trim().toUpperCase() : null;
-
-        Integer programId = prog != null ? termFeeAdminService.resolveProgramId(prog) : null;
-
-        Integer effectiveTermId = termId;
-
-        if (programId == null) return "redirect:/admin/term-fees";
-
-
-
-        int saved = 0, blank = 0, invalid = 0;
-
-        for (Map.Entry<String, String> e : params.entrySet()) {
-
-            if (!e.getKey().startsWith("rate_")) continue;
-
-            String feeCode = e.getKey().substring("rate_".length()).trim().toUpperCase();
-
-            String raw = e.getValue();
-
-            if (raw == null || raw.isBlank()) { blank++; continue; }
-
-            try {
-
-                double amount = Double.parseDouble(raw.trim().replace(",", ""));
-
-                if (termFeeAdminService.saveFeeRate(programId, effectiveTermId, yearLevel, semester, feeCode, amount)) {
-
-                    saved++;
-
-                } else {
-
-                    invalid++;
-
-                }
-
-            } catch (Exception ignored) {
-
-                invalid++;
-
-            }
-
-        }
-
-        return redirectScope(termId, prog, yearLevel, semester)
-
-            + "&success=true&saved=" + saved + "&blank=" + blank + "&invalid=" + invalid;
-
+    @PostMapping({"/save", "/import-global", "/import-scope", "/import-from-term", "/prepare",
+        "/copy-templates", "/import-template"})
+    public String blockWrites(HttpSession session, RedirectAttributes redirectAttributes) {
+        return FeeConfigurationRedirectSupport.blockFeeWrite(session, redirectAttributes);
     }
-
-
-
-    @PostMapping("/import-global")
-
-    public String importGlobal(@RequestParam Integer sourceTermId,
-
-                               @RequestParam Integer targetTermId,
-
-                               @RequestParam(required = false) String programCode,
-
-                               @RequestParam(defaultValue = "1") int yearLevel,
-
-                               @RequestParam(defaultValue = "1") int semester,
-
-                               HttpSession s) {
-
-        if (s.getAttribute("currentUser") == null) return "redirect:/login";
-
-        if (sourceTermId == null || targetTermId == null) return "redirect:/admin/term-fees";
-
-
-
-        TermFeeAdminService.FeeTemplateCopyResult result =
-
-            termFeeAdminService.importFeesGlobal(sourceTermId, targetTermId);
-
-        String prog = programCode != null ? programCode.trim().toUpperCase() : "";
-
-        return redirectScope(targetTermId, prog, yearLevel, semester)
-
-            + "&imported=true&importMode=global"
-
-            + "&importSeeded=" + result.programsSeeded()
-
-            + "&importCoreCreated=" + result.coreRowsCreated()
-
-            + "&importCoreUpdated=" + result.coreRowsUpdated()
-
-            + "&importSkipped=" + result.skippedNoSource();
-
-    }
-
-
-
-    @PostMapping("/import-scope")
-
-    public String importScope(@RequestParam Integer sourceTermId,
-
-                              @RequestParam Integer targetTermId,
-
-                              @RequestParam String programCode,
-
-                              @RequestParam(defaultValue = "1") int yearLevel,
-
-                              @RequestParam(defaultValue = "1") int semester,
-
-                              HttpSession s) {
-
-        if (s.getAttribute("currentUser") == null) return "redirect:/login";
-
-        if (sourceTermId == null || targetTermId == null) return "redirect:/admin/term-fees";
-
-
-
-        String prog = programCode.trim().toUpperCase();
-
-        TermFeeAdminService.FeeTemplateCopyResult result =
-
-            termFeeAdminService.importFeesScoped(sourceTermId, targetTermId, prog, yearLevel, semester);
-
-        return redirectScope(targetTermId, prog, yearLevel, semester)
-
-            + "&imported=true&importMode=scope"
-
-            + "&importSeeded=" + result.programsSeeded()
-
-            + "&importCoreCreated=" + result.coreRowsCreated()
-
-            + "&importCoreUpdated=" + result.coreRowsUpdated()
-
-            + "&importSkipped=" + result.skippedNoSource();
-
-    }
-
-
-
-    /** @deprecated Use import-global. Kept for bookmarked links. */
-
-    @PostMapping("/import-from-term")
-
-    public String importFromTermLegacy(@RequestParam Integer sourceTermId,
-
-                                       @RequestParam(required = false) Integer targetTermId,
-
-                                       @RequestParam(required = false) String programCode,
-
-                                       @RequestParam(defaultValue = "1") int yearLevel,
-
-                                       @RequestParam(defaultValue = "1") int semester,
-
-                                       @RequestParam(required = false) String importScope,
-
-                                       HttpSession s) {
-
-        if ("all".equals(importScope)) {
-
-            return importGlobal(sourceTermId, targetTermId, programCode, yearLevel, semester, s);
-
-        }
-
-        return importScope(sourceTermId, targetTermId,
-
-            programCode != null ? programCode : "", yearLevel, semester, s);
-
-    }
-
-
-
-    /** @deprecated Use import-global. */
-
-    @PostMapping("/prepare")
-
-    public String prepareLegacy(@RequestParam Integer termId,
-
-                                @RequestParam(required = false) String programCode,
-
-                                @RequestParam(defaultValue = "1") int yearLevel,
-
-                                @RequestParam(defaultValue = "1") int semester,
-
-                                HttpSession s) {
-
-        Integer prev = termFeeAdminService.resolvePreviousTermId(termId);
-
-        if (prev == null) return "redirect:/admin/term-fees?termId=" + termId + "&importCsvError=no-source-term";
-
-        return importGlobal(prev, termId, programCode, yearLevel, semester, s);
-
-    }
-
-
-
-    /** @deprecated Use import-global. */
-
-    @PostMapping("/copy-templates")
-
-    public String copyTemplatesLegacy(@RequestParam Integer termId,
-
-                                       @RequestParam(required = false) String programCode,
-
-                                       @RequestParam(defaultValue = "1") int yearLevel,
-
-                                       @RequestParam(defaultValue = "1") int semester,
-
-                                       HttpSession s) {
-
-        Integer prev = termFeeAdminService.resolvePreviousTermId(termId);
-
-        if (prev == null) return "redirect:/admin/term-fees?termId=" + termId + "&importCsvError=no-source-term";
-
-        return importGlobal(prev, termId, programCode, yearLevel, semester, s);
-
-    }
-
-
 
     @GetMapping("/readiness-export")
-
     public void exportReadiness(@RequestParam Integer termId,
-
                                 @RequestParam(defaultValue = "unresolved") String scope,
-
-                                HttpSession s,
-
+                                HttpSession session,
                                 HttpServletResponse response) throws java.io.IOException {
-
-        if (s.getAttribute("currentUser") == null) {
-
+        if (session.getAttribute("currentUser") == null) {
             response.sendRedirect("/login");
-
             return;
-
         }
-
         boolean unresolvedOnly = !"all".equalsIgnoreCase(scope);
-
         String csv = termFeeAdminService.exportFeeScopeReadinessCsv(termId, unresolvedOnly);
-
         writeCsvAttachment(response,
-
             "term-fee-gaps-term-" + termId + (unresolvedOnly ? "-unresolved" : "-all") + ".csv", csv);
-
     }
-
-
 
     @GetMapping("/import-template")
-
     public void exportImportTemplate(@RequestParam Integer termId,
-
                                      @RequestParam(defaultValue = "unresolved") String scope,
-
-                                     HttpSession s,
-
+                                     HttpSession session,
                                      HttpServletResponse response) throws java.io.IOException {
-
-        if (s.getAttribute("currentUser") == null) {
-
+        if (session.getAttribute("currentUser") == null) {
             response.sendRedirect("/login");
-
             return;
-
         }
-
         boolean unresolvedOnly = !"all".equalsIgnoreCase(scope);
-
         String csv = termFeeAdminService.exportFeeImportTemplateCsv(termId, unresolvedOnly);
-
         writeCsvAttachment(response,
-
             "term-fee-import-template-term-" + termId + (unresolvedOnly ? "-unresolved" : "-all") + ".csv", csv);
-
     }
-
-
-
-    @PostMapping("/import-template")
-
-    public String importTemplate(@RequestParam Integer termId,
-
-                                 @RequestParam(required = false) String programCode,
-
-                                 @RequestParam(defaultValue = "1") int yearLevel,
-
-                                 @RequestParam(defaultValue = "1") int semester,
-
-                                 @RequestParam("file") MultipartFile file,
-
-                                 HttpSession s) {
-
-        if (s.getAttribute("currentUser") == null) return "redirect:/login";
-
-        if (termId == null || file == null || file.isEmpty()) {
-
-            return "redirect:/admin/term-fees?termId=" + termId + "&importCsvError=empty";
-
-        }
-
-        try {
-
-            String csv = new String(file.getBytes(), StandardCharsets.UTF_8);
-
-            TermFeeAdminService.FeeCsvImportResult result =
-
-                termFeeAdminService.importFeeTemplateCsv(termId, csv);
-
-            String prog = programCode != null ? programCode.trim().toUpperCase() : "";
-
-            String firstError = result.errorExamples().isEmpty()
-
-                ? "" : URLEncoder.encode(result.errorExamples().get(0), StandardCharsets.UTF_8);
-
-            return redirectScope(termId, prog, yearLevel, semester)
-
-                + "&importCsv=true"
-
-                + "&csvRowsChecked=" + result.rowsChecked()
-
-                + "&csvRowsImported=" + result.rowsImported()
-
-                + "&csvRowsCreated=" + result.rowsCreated()
-
-                + "&csvRowsUpdated=" + result.rowsUpdated()
-
-                + "&csvFeeValuesApplied=" + result.feeValuesApplied()
-
-                + "&csvRowsSkipped=" + result.rowsSkipped()
-
-                + (firstError.isBlank() ? "" : "&csvFirstError=" + firstError);
-
-        } catch (Exception e) {
-
-            String msg = URLEncoder.encode(e.getMessage() != null ? e.getMessage() : "CSV import failed", StandardCharsets.UTF_8);
-
-            return "redirect:/admin/term-fees?termId=" + termId + "&importCsvError=" + msg;
-
-        }
-
-    }
-
-
-
-    private static String redirectScope(Integer termId, String programCode, int yearLevel, int semester) {
-
-        String url = "redirect:/admin/term-fees?";
-
-        if (termId != null) url += "termId=" + termId;
-
-        if (programCode != null && !programCode.isBlank()) {
-
-            url += (termId != null ? "&" : "") + "programCode=" + programCode;
-
-        }
-
-        url += "&yearLevel=" + yearLevel + "&semester=" + semester;
-
-        return url;
-
-    }
-
-
 
     private static void writeCsvAttachment(HttpServletResponse response, String filename, String csv)
-
             throws java.io.IOException {
-
         response.setContentType("text/csv");
-
-        response.setCharacterEncoding("UTF-8");
-
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-
         response.getWriter().write(csv);
-
         response.getWriter().flush();
-
     }
-
-
 
     private List<String> missingFeeCodes(List<Map<String, Object>> feeTypes, Map<String, Double> currentRates) {
-
         java.util.ArrayList<String> missing = new java.util.ArrayList<>();
-
         for (Map<String, Object> feeType : feeTypes) {
-
             Object codeObj = feeType.get("fee_code");
-
-            if (codeObj == null) continue;
-
-            if (!currentRates.containsKey(codeObj.toString())) missing.add(codeObj.toString());
-
+            if (codeObj == null) {
+                continue;
+            }
+            if (!currentRates.containsKey(codeObj.toString())) {
+                missing.add(codeObj.toString());
+            }
         }
-
         return missing;
-
     }
-
-
 
     private List<String> fallbackFeeCodes(List<Map<String, Object>> feeTypes, Map<String, String> rateSources) {
-
         java.util.ArrayList<String> fallback = new java.util.ArrayList<>();
-
         for (Map<String, Object> feeType : feeTypes) {
-
             Object codeObj = feeType.get("fee_code");
-
-            if (codeObj == null) continue;
-
-            if ("FALLBACK".equals(rateSources.get(codeObj.toString()))) fallback.add(codeObj.toString());
-
+            if (codeObj == null) {
+                continue;
+            }
+            if ("FALLBACK".equals(rateSources.get(codeObj.toString()))) {
+                fallback.add(codeObj.toString());
+            }
         }
-
         return fallback;
-
     }
-
 }
-
-

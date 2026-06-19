@@ -111,7 +111,7 @@
 
             <div th:if="${scheduleConflicts != null and !scheduleConflicts.isEmpty()}" class="alert alert-danger" style="margin-bottom: 1.5rem; align-items: flex-start;">
                 <i class="ti ti-alert-triangle" aria-hidden="true"></i>
-                <div>
+                <div style="flex: 1;">
                     <strong>Existing schedule conflicts need attention.</strong>
                     <div th:if="${scheduleConflictsTruncated}" style="margin-top: 0.35rem;">
                         Showing a 50-item preview. Additional conflicts exist; new conflicting assignments are still blocked.
@@ -124,6 +124,14 @@
                         on day <span th:text="${conflict.day_of_week}"></span>
                         (<span th:text="${conflict.start_time}"></span>-<span th:text="${conflict.end_time}"></span>).
                     </div>
+                    <form th:action="@{/admin/class-scheduling/repair-schedules}" method="post"
+                          style="margin-top: 0.75rem;"
+                          onsubmit="return confirm('Rebuild all schedule slots for this term? Rooms will be cleared to TBA and day/time slots will be re-staggered. This cannot be undone automatically.');">
+                        <input type="hidden" name="termId" th:value="${termId}">
+                        <button type="submit" class="btn btn-outline" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+                            <i class="ti ti-tool"></i> Repair Term Schedules
+                        </button>
+                    </form>
                 </div>
             </div>
 

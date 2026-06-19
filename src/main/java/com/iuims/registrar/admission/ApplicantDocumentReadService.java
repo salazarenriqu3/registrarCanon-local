@@ -70,6 +70,25 @@ public class ApplicantDocumentReadService {
         return normalized.isEmpty() ? listLegacyDocuments(applicant) : normalized;
     }
 
+    public String resolveDocumentLabel(String studentNumber, String documentKey) {
+        if (documentKey == null || documentKey.isBlank()) {
+            return "Admission document";
+        }
+        for (Map<String, Object> document : listDocuments(studentNumber)) {
+            if (documentKey.equals(document.get("document_key"))) {
+                Object label = document.get("label");
+                if (label != null && !label.toString().isBlank()) {
+                    return label.toString().trim();
+                }
+            }
+        }
+        if (documentKey.startsWith("legacy:")) {
+            String slot = documentKey.substring("legacy:".length());
+            return LEGACY_DOCUMENTS.getOrDefault(slot, slot);
+        }
+        return "Admission document";
+    }
+
     public Path resolveDocumentPath(String studentNumber, String documentKey) {
         if (documentKey == null || documentKey.isBlank()) {
             return null;

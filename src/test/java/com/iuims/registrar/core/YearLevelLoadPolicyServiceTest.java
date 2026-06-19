@@ -30,7 +30,8 @@ class YearLevelLoadPolicyServiceTest {
     void seedsFourYearLevelsFromLegacyMaximum() {
         assertThat(service.listPolicies()).hasSize(4);
         assertThat(service.resolve(1).maximumUnits()).isEqualByComparingTo("27");
-        assertThat(service.resolve(4).minimumUnits()).isEqualByComparingTo("0");
+        assertThat(service.resolve(1).minimumUnits()).isEqualByComparingTo("15");
+        assertThat(service.resolve(4).minimumUnits()).isEqualByComparingTo("15");
     }
 
     @Test
@@ -57,7 +58,7 @@ class YearLevelLoadPolicyServiceTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Year 2 minimum units");
 
-        assertThat(service.resolve(1).minimumUnits()).isEqualByComparingTo("0");
+        assertThat(service.resolve(1).minimumUnits()).isEqualByComparingTo("15");
     }
 
     @Test
@@ -78,7 +79,7 @@ class YearLevelLoadPolicyServiceTest {
     private Map<String, String> validPolicyParams() {
         Map<String, String> params = new HashMap<>();
         for (int yearLevel = 1; yearLevel <= 4; yearLevel++) {
-            params.put("minimumUnits_" + yearLevel, "0");
+            params.put("minimumUnits_" + yearLevel, "15");
             params.put("maximumUnits_" + yearLevel, "27");
         }
         return params;

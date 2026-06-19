@@ -1,6 +1,7 @@
 package com.iuims.registrar.portal;
 import com.iuims.registrar.academic.AcademicGradingService;
 import com.iuims.registrar.academic.BlockOfferingService;
+import com.iuims.registrar.academic.ScheduleRepairService;
 import com.iuims.registrar.academic.GradingSchemeService;
 import com.iuims.registrar.academic.SlotMonitoringService;
 import com.iuims.registrar.academic.ClassInfoDto;
@@ -40,18 +41,21 @@ public class AcademicController {
     private final StudentCurriculumService studentCurriculumService;
     private final SlotMonitoringService slotMonitoringService;
     private final GradingSchemeService gradingSchemeService;
+    private final ScheduleRepairService scheduleRepairService;
 
     public AcademicController(AcademicGradingService academicService, TermFeeAdminService termFeeAdminService,
                               BlockOfferingService blockOfferingService,
                               StudentCurriculumService studentCurriculumService,
                               SlotMonitoringService slotMonitoringService,
-                              GradingSchemeService gradingSchemeService) {
+                              GradingSchemeService gradingSchemeService,
+                              ScheduleRepairService scheduleRepairService) {
         this.academicService = academicService;
         this.termFeeAdminService = termFeeAdminService;
         this.blockOfferingService = blockOfferingService;
         this.studentCurriculumService = studentCurriculumService;
         this.slotMonitoringService = slotMonitoringService;
         this.gradingSchemeService = gradingSchemeService;
+        this.scheduleRepairService = scheduleRepairService;
     }
 
 
@@ -397,6 +401,13 @@ public class AcademicController {
             facultyId == 0 ? null : facultyId, curriculumId == 0 ? null : curriculumId);
         return "redirect:/admin/class-scheduling?termId=" + termId + "&msg="
             + java.net.URLEncoder.encode(r, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    @PostMapping("/admin/class-scheduling/repair-schedules")
+    public String repairSchedules(@RequestParam int termId) {
+        ScheduleRepairService.RepairResult result = scheduleRepairService.repairTermSchedules(termId);
+        return "redirect:/admin/class-scheduling?termId=" + termId + "&msg="
+            + java.net.URLEncoder.encode(result.message(), java.nio.charset.StandardCharsets.UTF_8);
     }
 
     @PostMapping("/admin/class-scheduling/rematerialize-block")
