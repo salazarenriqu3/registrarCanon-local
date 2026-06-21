@@ -178,8 +178,16 @@ CREATE TABLE IF NOT EXISTS student_withdrawal_requests (
     rejected_by VARCHAR(100) NULL,
     rejected_at TIMESTAMP NULL,
     rejection_reason VARCHAR(500) NULL,
-    completed_at TIMESTAMP NULL
+    completed_at TIMESTAMP NULL,
+    withdrawal_scope VARCHAR(30) NOT NULL DEFAULT 'SINGLE_SUBJECT',
+    subject_count INT NOT NULL DEFAULT 1,
+    approval_source VARCHAR(40) NULL
 );
+
+ALTER TABLE student_withdrawal_requests
+    ADD COLUMN IF NOT EXISTS withdrawal_scope VARCHAR(30) NOT NULL DEFAULT 'SINGLE_SUBJECT',
+    ADD COLUMN IF NOT EXISTS subject_count INT NOT NULL DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS approval_source VARCHAR(40) NULL;
 
 DROP PROCEDURE IF EXISTS sp_add_column_if_missing;
 

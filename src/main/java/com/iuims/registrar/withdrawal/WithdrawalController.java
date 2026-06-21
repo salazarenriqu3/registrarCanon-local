@@ -30,20 +30,15 @@ public class WithdrawalController {
     @GetMapping("/admin/withdrawals")
     public String registrarQueue(HttpSession session, Model model) {
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
-        model.addAttribute("queueMode", "REGISTRAR");
-        model.addAttribute("pageTitle", "Withdrawal Approvals");
-        model.addAttribute("pageSubtitle", "Final Registrar approval removes the subject and preserves the reasoned audit trail.");
-        model.addAttribute("requests", withdrawalService.listRequests(WithdrawalService.STATUS_PENDING_REGISTRAR));
-        model.addAttribute("statusCounts", withdrawalService.statusCounts());
-        return "withdrawal_queue";
+        return "redirect:/admin/withdrawals/report";
     }
 
     @GetMapping("/admin/withdrawals/report")
     public String registrarReport(HttpSession session, Model model) {
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
         model.addAttribute("queueMode", "REPORT");
-        model.addAttribute("pageTitle", "Withdrawal Report");
-        model.addAttribute("pageSubtitle", "Reportable withdrawal history by reason, timing bucket, program, and approver.");
+        model.addAttribute("pageTitle", "Drop History");
+        model.addAttribute("pageSubtitle", "Completed registrar drops and retained historical withdrawal records.");
         model.addAttribute("requests", withdrawalService.listRequests(null));
         model.addAttribute("statusCounts", withdrawalService.statusCounts());
         model.addAttribute("reasonSummary", withdrawalService.reasonSummary());
@@ -54,12 +49,7 @@ public class WithdrawalController {
     @GetMapping("/faculty/withdrawals")
     public String deanQueue(HttpSession session, Model model) {
         if (session.getAttribute("currentUser") == null) return "redirect:/login";
-        model.addAttribute("queueMode", "DEAN");
-        model.addAttribute("pageTitle", "Dean Withdrawal Review");
-        model.addAttribute("pageSubtitle", "Review subject withdrawal requests before Registrar final approval.");
-        model.addAttribute("requests", withdrawalService.listRequests(WithdrawalService.STATUS_PENDING_DEAN));
-        model.addAttribute("statusCounts", withdrawalService.statusCounts());
-        return "withdrawal_queue";
+        return "redirect:/faculty/grades";
     }
 
     @PostMapping("/admin/withdrawals/request")
@@ -78,6 +68,50 @@ public class WithdrawalController {
                 "Withdrawal request #" + requestId + " submitted for Dean review.");
         } catch (Exception e) {
             ra.addFlashAttribute("errorMessage", "Withdrawal request failed: " + e.getMessage());
+        }
+        ra.addAttribute("username", username);
+        return "redirect:/admin/student-manager";
+    }
+
+    @PostMapping("/admin/student-manager/drop-subject")
+    public String dropSubject(@RequestParam String studentNumber,
+                              @RequestParam Integer scheduleId,
+                              @RequestParam String reasonCode,
+                              @RequestParam(required = false) String remarks,
+                              HttpSession session,
+                              RedirectAttributes ra) {
+        if (session.getAttribute("currentUser") == null) return "redirect:/login";
+        String username = studentNumber != null ? studentNumber.trim() : "";
+        try {
+            WithdrawalService.DirectDropResult result = withdrawalService.dropSubjectByRegistrar(
+                username, scheduleId, reasonCode, remarks, currentUsername(session));
+            ra.addFlashAttribute("successMessage", String.format(
+                "Subject dropped. Record #%d. Applied charge: PHP %,.2f.",
+                result.requestId(), result.totalCharge()));
+        } catch (Exception e) {
+            ra.addFlashAttribute("errorMessage", "Subject drop failed: " + e.getMessage());
+        }
+        ra.addAttribute("username", username);
+        return "redirect:/admin/student-manager";
+    }
+
+    @PostMapping("/admin/student-manager/drop-student")
+    public String dropStudent(@RequestParam String studentNumber,
+                              @RequestParam String reasonCode,
+                              @RequestParam(required = false) String remarks,
+                              HttpSession session,
+                              RedirectAttributes ra) {
+        if (session.getAttribute("currentUser") == null) return "redirect:/login";
+        String username = studentNumber != null ? studentNumber.trim() : "";
+        try {
+            WithdrawalService.DirectDropResult result = withdrawalService.dropStudentByRegistrar(
+                username, reasonCode, remarks, currentUsername(session));
+            ra.addFlashAttribute("successMessage", String.format(
+                "Student dropped from the current term. %d subject(s) removed under record #%d. " +
+                    "Total applied charge: PHP %,.2f.",
+                result.subjectsDropped(), result.requestId(), result.totalCharge()));
+        } catch (Exception e) {
+            ra.addFlashAttribute("errorMessage", "Student drop failed: " + e.getMessage());
         }
         ra.addAttribute("username", username);
         return "redirect:/admin/student-manager";

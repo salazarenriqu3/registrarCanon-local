@@ -22,8 +22,7 @@
                     <p class="page-subtitle" th:text="${pageSubtitle}">Review withdrawal requests.</p>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <a th:if="${queueMode != 'DEAN'}" th:href="@{/admin/withdrawals}" class="btn btn-outline" style="font-size: 0.85rem;">Approval Queue</a>
-                    <a th:if="${queueMode != 'DEAN'}" th:href="@{/admin/withdrawals/report}" class="btn btn-outline" style="font-size: 0.85rem;">Report</a>
+                    <a th:if="${queueMode != 'REPORT' and queueMode != 'DEAN'}" th:href="@{/admin/withdrawals/report}" class="btn btn-outline" style="font-size: 0.85rem;">Drop History</a>
                     <span class="status-badge pending"><div class="status-dot"></div>Dean: <span th:text="${statusCounts.get('PENDING_DEAN')}">0</span></span>
                     <span class="status-badge pending"><div class="status-dot"></div>Registrar: <span th:text="${statusCounts.get('PENDING_REGISTRAR')}">0</span></span>
                     <span class="status-badge enrolled"><div class="status-dot"></div>Approved: <span th:text="${statusCounts.get('APPROVED')}">0</span></span>
@@ -152,7 +151,7 @@
                         </table>
                     </div>
                     <p style="font-size: 0.8rem; color: var(--text-muted); margin: 1rem 0 0;">
-                        Registrar approval uses the existing withdrawal ledger recalculation path only after Dean review has forwarded the request.
+                        Registrar drops use the existing withdrawal ledger recalculation path after the Dean-approved paper form is received.
                     </p>
                 </div>
             </div>
